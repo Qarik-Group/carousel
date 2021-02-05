@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+
 	"github.com/rivo/tview"
 )
 
@@ -15,7 +17,11 @@ func (s *Store) Tree() *tview.TreeNode {
 		node := tview.NewTreeNode(key)
 
 		for _, version := range value.Versions {
-			node.SetChildren(append(node.GetChildren(), tview.NewTreeNode(version.Id)))
+			node.SetChildren(append(
+				node.GetChildren(),
+				tview.NewTreeNode(
+					fmt.Sprintf("id:%s-%s", version.Id, version.Certificate.AuthorityKeyId),
+				)))
 		}
 
 		root.SetChildren(append(root.GetChildren(), node))

@@ -1,16 +1,19 @@
 package store
 
 import (
+	"crypto/x509"
 	"time"
 
 	//	"code.cloudfoundry.org/credhub-cli/credhub/credentials"
+	"code.cloudfoundry.org/credhub-cli/credhub"
 	"github.com/emirpasic/gods/maps/treebidimap"
 )
 
 type Store struct {
-	Deployments  *treebidimap.Map
-	CertVersions *treebidimap.Map
-	Certs        *treebidimap.Map
+	Deployments   *treebidimap.Map
+	CertVersions  *treebidimap.Map
+	Certs         *treebidimap.Map
+	credhubClient *credhub.CredHub
 }
 
 type Cert struct {
@@ -28,6 +31,8 @@ type CertVersion struct {
 	Cert                 *Cert
 	Deployments          []*Deployment
 	Signs                []*CertVersion
+	Certificate          *x509.Certificate
+	Ca                   *x509.Certificate
 }
 
 type Deployment struct {

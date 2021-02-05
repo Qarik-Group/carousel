@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -19,20 +18,19 @@ func main() {
 		logger.Fatalf("failed to load environment configuration: %s", err)
 	}
 
-	ch, _ := credhub.New(
+	ch, err := credhub.New(
 		cfg.Credhub.Server,
 		credhub.SkipTLSValidation(true), // TODO use CA
 		credhub.Auth(auth.UaaClientCredentials(cfg.Credhub.Client, cfg.Credhub.Secret)),
 	)
-
-	fmt.Println("Connected to ", ch.ApiURL)
-
-	certs, err := ch.GetAllCertificatesMetadata()
 	if err != nil {
-		logger.Fatalf("failed to load certificate metadate from Credhub: %s", err)
+		logger.Fatalf("failed to connect to Credhub: %s", err)
 	}
 
-	s := store.NewStore(certs)
+	s, err := store.NewStore(ch)
+	if err != nil {
+		logger.Fatalf("failed to load data: %s", err)
+	}
 
 	root := s.Tree()
 
