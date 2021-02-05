@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"code.cloudfoundry.org/credhub-cli/credhub"
 	"code.cloudfoundry.org/credhub-cli/credhub/auth"
+	"github.com/starkandwayne/carousel/store"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -33,13 +32,9 @@ func main() {
 		logger.Fatalf("failed to load certificate metadate from Credhub: %s", err)
 	}
 
-	root := tview.NewTreeNode("∎").
-		SetColor(tcell.ColorRed)
+	s := store.NewStore(certs)
 
-	for _, cert := range certs {
-		root.SetChildren(addToTree(root.GetChildren(),
-			strings.Split(strings.TrimPrefix(cert.Name, "/"), "/")))
-	}
+	root := s.Tree()
 
 	tree := tview.NewTreeView().
 		SetRoot(root).
