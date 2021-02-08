@@ -16,44 +16,31 @@ func (s *Store) Tree() *tview.TreeNode {
 			continue
 		}
 
-		node := tview.NewTreeNode(cert.Name)
+		node := tview.NewTreeNode(cert.Name).
+			SetReference(cert).
+			Collapse()
+
 		for _, version := range cert.Versions {
 			node.SetChildren(append(
 				node.GetChildren(),
-				tview.NewTreeNode(version.Id).SetChildren(addToTree(version.Signs)),
+				tview.NewTreeNode(version.Id).
+					SetReference(version).
+					SetChildren(addToTree(version.Signs)),
 			))
 		}
 
 		root.SetChildren(append(root.GetChildren(), node))
 	}
 
-	// for _, cert := range certs {
-	//	if cert.Name == cert.SignedBy {
-	//		root.SetChildren(addToTree(root.GetChildren(), []string{cert.Name}))
-	//	} else {
-	//		root.SetChildren(addToTree(root.GetChildren(), []string{cert.SignedBy, cert.Name}))
-	//	}
-	// }
-
 	return root
 }
-
-// func (c *certsCache) withNames(names []string) []*credentials.CertificateMetadata {
-//	out := make([]*credentials.CertificateMetadata, 0)
-//	for _, cert := range c.certs {
-//		for _, name := range names {
-//			if name == cert.Name {
-//				out = append(out, &cert)
-//			}
-//		}
-//	}
-
-// }
 
 func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
 	out := make([]*tview.TreeNode, 0)
 	for _, certVersion := range certVersions {
-		certNode := tview.NewTreeNode(certVersion.Cert.Name)
+		certNode := tview.NewTreeNode(certVersion.Cert.Name).
+			SetReference(certVersion.Cert)
+
 		var exists bool
 		for _, n := range out {
 			if n.GetText() == certVersion.Cert.Name {
@@ -61,7 +48,8 @@ func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
 				certNode = n
 			}
 		}
-		certVersionNode := tview.NewTreeNode(certVersion.Id)
+		certVersionNode := tview.NewTreeNode(certVersion.Id).
+			SetReference(certVersion)
 		certNode.AddChild(certVersionNode)
 		certVersionNode.SetChildren(addToTree(certVersion.Signs))
 		if !exists {

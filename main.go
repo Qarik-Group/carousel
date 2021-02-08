@@ -38,16 +38,26 @@ func main() {
 		SetRoot(root).
 		SetCurrentNode(root)
 
-	// If a directory was selected, open it.
+	details := tview.NewFlex().
+		AddItem(tview.NewBox().SetBorder(true).SetTitle("welcome"), 0, 1, false)
+
 	tree.SetSelectedFunc(func(node *tview.TreeNode) {
-		// reference := node.GetReference()
-		// if reference == nil {
-		//	return // Selecting the root node does nothing.
-		// }
+		// TODO switch detailed view on switching to a node (not only when hitting enter)
+		details.Clear().AddItem(s.ShowDetails(node), 0, 1, false)
 		node.SetExpanded(!node.IsExpanded())
 	})
 
-	if err := tview.NewApplication().SetRoot(tree, true).EnableMouse(true).Run(); err != nil {
+	flex := tview.NewFlex().
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			//	AddItem(tview.NewBox().SetBorder(true).SetTitle("Controls"), 0, 1, false).
+			AddItem(tview.NewFlex().
+				AddItem(tree, 0, 1, true).
+				AddItem(details, 0, 1, false),
+				0, 5, true), //.
+			//			AddItem(tview.NewBox().SetBorder(true).SetTitle("More Controls"), 0, 1, false),
+			0, 1, false)
+
+	if err := tview.NewApplication().SetRoot(flex, true).EnableMouse(true).Run(); err != nil {
 		panic(err)
 	}
 }
