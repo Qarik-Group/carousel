@@ -1,31 +1,30 @@
 package store
 
 import (
-	"fmt"
-
 	"github.com/rivo/tview"
 )
 
 func (s *Store) Tree() *tview.TreeNode {
 	root := tview.NewTreeNode("∎")
-	it := s.Certs.Iterator()
+	it := s.certs.Iterator()
 	for it.Next() {
-		k, v := it.Key(), it.Value()
-		key := k.(string)
-		value := v.(*Cert)
+		_, v := it.Key(), it.Value()
+		cert := v.(*Cert)
 
-		node := tview.NewTreeNode(key)
+		// only interested in top level certVersions
+		if len(cert.Versions) != 0 && cert.Versions[0].SignedBy != nil {
+			continue
+		}
 
-		for _, version := range value.Versions {
+		node := tview.NewTreeNode(cert.Name)
+		for _, version := range cert.Versions {
 			node.SetChildren(append(
 				node.GetChildren(),
-				tview.NewTreeNode(
-					fmt.Sprintf("id:%s-%s", version.Id, version.Certificate.AuthorityKeyId),
-				)))
+				tview.NewTreeNode(version.Id).SetChildren(addToTree(version.Signs)),
+			))
 		}
 
 		root.SetChildren(append(root.GetChildren(), node))
-
 	}
 
 	// for _, cert := range certs {
@@ -51,18 +50,23 @@ func (s *Store) Tree() *tview.TreeNode {
 
 // }
 
-// func (c *certsCache) addToTree(root []*tview.TreeNode, names []string) []*tview.TreeNode {
-//	if len(names) > 0 {
-//		var i int
-//		for i = 0; i < len(root); i++ {
-//			if root[i].GetText() == names[0] { //already in tree
-//				break
-//			}
-//		}
-//		if i == len(root) {
-//			root = append(root, tview.NewTreeNode(names[0]))
-//		}
-//		root[i].SetChildren(addToTree(root[i].GetChildren(), names[1:]))
-//	}
-//	return root
-// }
+func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
+	out := make([]*tview.TreeNode, 0)
+	for _, certVersion := range certVersions {
+		certNode := tview.NewTreeNode(certVersion.Cert.Name)
+		var exists bool
+		for _, n := range out {
+			if n.GetText() == certVersion.Cert.Name {
+				exists = true
+				certNode = n
+			}
+		}
+		certVersionNode := tview.NewTreeNode(certVersion.Id)
+		certNode.AddChild(certVersionNode)
+		certVersionNode.SetChildren(addToTree(certVersion.Signs))
+		if !exists {
+			out = append(out, certNode)
+		}
+	}
+	return out
+}

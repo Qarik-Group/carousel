@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"crypto/x509"
 	"time"
 
@@ -10,9 +11,9 @@ import (
 )
 
 type Store struct {
-	Deployments   *treebidimap.Map
-	CertVersions  *treebidimap.Map
-	Certs         *treebidimap.Map
+	deployments   *treebidimap.Map
+	certVersions  *treebidimap.Map
+	certs         *treebidimap.Map
 	credhubClient *credhub.CredHub
 }
 
@@ -30,9 +31,10 @@ type CertVersion struct {
 	SelfSigned           bool
 	Cert                 *Cert
 	Deployments          []*Deployment
+	SignedBy             *CertVersion
 	Signs                []*CertVersion
 	Certificate          *x509.Certificate
-	Ca                   *x509.Certificate
+	//	Ca                   *x509.Certificate
 }
 
 type Deployment struct {
@@ -67,4 +69,15 @@ func certVersionById(a, b interface{}) int {
 	default:
 		return 0
 	}
+}
+
+func (s *Store) GetCertVersionBySubjectKeyId(keyId []byte) (*CertVersion, bool) {
+	_, foundValue := s.certVersions.Find(func(index interface{}, value interface{}) bool {
+		return bytes.Compare(value.(*CertVersion).Certificate.SubjectKeyId, keyId) == 0
+
+	})
+	if foundValue != nil {
+		return foundValue.(*CertVersion), true
+	}
+	return nil, false
 }
