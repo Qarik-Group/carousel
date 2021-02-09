@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/credhub-cli/credhub"
 	"github.com/emirpasic/gods/maps/treebidimap"
@@ -30,11 +31,18 @@ func NewStore(ch *credhub.CredHub) (*Store, error) {
 
 		versions := make([]*CertVersion, 0)
 		for _, certMetaVersion := range certMeta.Versions {
+			expiry, err := time.Parse(time.RFC3339, certMetaVersion.ExpiryDate)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse expiry date: %s for cert version: %s",
+					certMetaVersion.ExpiryDate, certMetaVersion.Id)
+			}
 			cv := CertVersion{
 				Id:                   certMetaVersion.Id,
 				Cert:                 &cert,
+				Transitional:         certMetaVersion.Transitional,
 				CertificateAuthority: certMetaVersion.CertificateAuthority,
 				SelfSigned:           certMetaVersion.SelfSigned,
+				Expiry:               expiry,
 			}
 			versions = append(versions, &cv)
 			store.certVersions.Put(cv.Id, &cv)
