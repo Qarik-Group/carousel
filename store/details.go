@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -43,6 +44,8 @@ func renderCertVersionDetail(cv *CertVersion) *tview.Frame {
 	addSimpleRow(t, "Transitional", strconv.FormatBool(cv.Transitional))
 	addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cv.CertificateAuthority))
 	addSimpleRow(t, "Self Signed", strconv.FormatBool(cv.SelfSigned))
+
+	addSimpleRow(t, "Deployments", renderDeployments(cv.Deployments))
 	// skid := make([]byte, hex.DecodedLen(len(cv.Certificate.SubjectKeyId)))
 	// n, _ := hex.Decode(skid, cv.Certificate.SubjectKeyId)
 	// addSimpleRow(t, "SKID", string(skid[:n]))
@@ -61,7 +64,7 @@ func renderCertVersionDetail(cv *CertVersion) *tview.Frame {
 
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(t, 7, 1, false).
+		AddItem(t, 8, 1, false).
 		AddItem(info, 0, 1, false)
 
 	return tview.NewFrame(flex)
@@ -78,4 +81,13 @@ func addSimpleRow(t *tview.Table, lbl, val string) {
 	row := t.GetRowCount()
 	t.SetCell(row, 0, tview.NewTableCell(lbl).SetStyle(tcell.Style{}.Bold(true)))
 	t.SetCellSimple(row, 1, val)
+}
+
+func renderDeployments(deployments []*Deployment) string {
+	tmp := make([]string, 0)
+	for _, d := range deployments {
+		tmp = append(tmp, d.Name)
+	}
+
+	return strings.Join(tmp, ", ")
 }

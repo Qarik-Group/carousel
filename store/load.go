@@ -9,18 +9,22 @@ import (
 	"code.cloudfoundry.org/credhub-cli/credhub"
 	"github.com/emirpasic/gods/maps/treebidimap"
 	"github.com/emirpasic/gods/utils"
+
+	boshdir "github.com/cloudfoundry/bosh-cli/director"
 )
 
-func NewStore(ch *credhub.CredHub) (*Store, error) {
+func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, error) {
 	certs, err := ch.GetAllCertificatesMetadata()
 	if err != nil {
 		return nil, err
 	}
 
 	store := Store{
-		certs:         treebidimap.NewWith(utils.StringComparator, certByName),
-		certVersions:  treebidimap.NewWith(utils.StringComparator, certVersionById),
-		credhubClient: ch,
+		certs:          treebidimap.NewWith(utils.StringComparator, certByName),
+		certVersions:   treebidimap.NewWith(utils.StringComparator, certVersionById),
+		deployments:    treebidimap.NewWith(utils.StringComparator, deploymentByName),
+		credhubClient:  ch,
+		directorClient: directorClient,
 	}
 
 	for _, certMeta := range certs {
@@ -43,6 +47,7 @@ func NewStore(ch *credhub.CredHub) (*Store, error) {
 				CertificateAuthority: certMetaVersion.CertificateAuthority,
 				SelfSigned:           certMetaVersion.SelfSigned,
 				Expiry:               expiry,
+				Deployments:          make([]*Deployment, 0),
 			}
 			versions = append(versions, &cv)
 			store.certVersions.Put(cv.Id, &cv)
@@ -99,6 +104,31 @@ func NewStore(ch *credhub.CredHub) (*Store, error) {
 			v.SignedBy = ca
 		} else {
 			return nil, fmt.Errorf("failed to lookup ca CertVersion with id: %s", v.Id)
+		}
+	}
+
+	deployments, err := store.directorClient.Deployments()
+	if err != nil {
+		return nil, err
+	}
+	for _, deployment := range deployments {
+		d := Deployment{
+			Name:     deployment.Name(),
+			Versions: make([]*CertVersion, 0),
+		}
+		store.deployments.Put(d.Name, &d)
+		variables, err := deployment.Variables()
+		if err != nil {
+			return nil, err
+		}
+		for _, variable := range variables {
+			cv, _ := store.certVersions.Get(variable.ID)
+			if cv == nil {
+				continue
+			}
+			certVersion := cv.(*CertVersion)
+			certVersion.Deployments = append(certVersion.Deployments, &d)
+			d.Versions = append(d.Versions, certVersion)
 		}
 	}
 
