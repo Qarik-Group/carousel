@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -37,6 +38,12 @@ func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
 			}
 		}
 		certVersionNode := tview.NewTreeNode(fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())).SetReference(certVersion)
+		switch certVersion.Status() {
+		case "unused":
+			certVersionNode.SetColor(tcell.Color102)
+		case "notice":
+			certVersionNode.SetColor(tcell.ColorDarkGoldenrod)
+		}
 		certNode.AddChild(certVersionNode)
 		certVersionNode.SetChildren(addToTree(certVersion.Signs))
 		if !exists {
