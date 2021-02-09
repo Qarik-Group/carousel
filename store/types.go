@@ -45,6 +45,17 @@ type Deployment struct {
 	Name     string
 }
 
+func (cv *CertVersion) Status() string {
+	status := "active"
+	if cv.Expiry.Sub(time.Now()) < time.Hour*24*30 {
+		status = "notice"
+	}
+	if len(cv.Deployments) == 0 {
+		status = "unused"
+	}
+	return status
+}
+
 func certByName(a, b interface{}) int {
 	// Type assertion, program will panic if this is not respected
 	c1 := a.(*Cert)

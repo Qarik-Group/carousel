@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+
 	"github.com/rivo/tview"
 )
 
@@ -15,21 +17,7 @@ func (s *Store) Tree() *tview.TreeNode {
 		if len(cert.Versions) != 0 && cert.Versions[0].SignedBy != nil {
 			continue
 		}
-
-		node := tview.NewTreeNode(cert.Name).
-			SetReference(cert).
-			Collapse()
-
-		for _, version := range cert.Versions {
-			node.SetChildren(append(
-				node.GetChildren(),
-				tview.NewTreeNode(version.Id).
-					SetReference(version).
-					SetChildren(addToTree(version.Signs)),
-			))
-		}
-
-		root.SetChildren(append(root.GetChildren(), node))
+		root.SetChildren(append(root.GetChildren(), addToTree(cert.Versions)...))
 	}
 
 	return root
@@ -48,8 +36,7 @@ func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
 				certNode = n
 			}
 		}
-		certVersionNode := tview.NewTreeNode(certVersion.Id).
-			SetReference(certVersion)
+		certVersionNode := tview.NewTreeNode(fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())).SetReference(certVersion)
 		certNode.AddChild(certVersionNode)
 		certVersionNode.SetChildren(addToTree(certVersion.Signs))
 		if !exists {
