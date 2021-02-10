@@ -6,9 +6,8 @@ import (
 
 	"code.cloudfoundry.org/credhub-cli/credhub"
 	"code.cloudfoundry.org/credhub-cli/credhub/auth"
+	"github.com/starkandwayne/carousel/app"
 	"github.com/starkandwayne/carousel/store"
-
-	"github.com/rivo/tview"
 
 	boshdir "github.com/cloudfoundry/bosh-cli/director"
 	boshuaa "github.com/cloudfoundry/bosh-cli/uaa"
@@ -51,34 +50,9 @@ func main() {
 		logger.Fatalf("failed to load data: %s", err)
 	}
 
-	root := s.Tree()
+	app := app.NewApplication(s).Init()
 
-	tree := tview.NewTreeView().
-		SetRoot(root).
-		SetCurrentNode(root)
-
-	details := tview.NewFlex().
-		AddItem(tview.NewBox().SetBorder(true).SetTitle("welcome"), 0, 1, false)
-
-	tree.SetChangedFunc(func(node *tview.TreeNode) {
-		details.Clear().AddItem(s.ShowDetails(node), 0, 1, false)
-	})
-
-	tree.SetSelectedFunc(func(node *tview.TreeNode) {
-		node.SetExpanded(!node.IsExpanded())
-	})
-
-	flex := tview.NewFlex().
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			//	AddItem(tview.NewBox().SetBorder(true).SetTitle("Controls"), 0, 1, false).
-			AddItem(tview.NewFlex().
-				AddItem(tree, 0, 1, true).
-				AddItem(details, 0, 1, false),
-				0, 5, true), //.
-			//			AddItem(tview.NewBox().SetBorder(true).SetTitle("More Controls"), 0, 1, false),
-			0, 1, false)
-
-	if err := tview.NewApplication().SetRoot(flex, true).EnableMouse(true).Run(); err != nil {
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }

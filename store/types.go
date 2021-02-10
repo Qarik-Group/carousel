@@ -37,12 +37,17 @@ type CertVersion struct {
 	SignedBy             *CertVersion
 	Signs                []*CertVersion
 	Certificate          *x509.Certificate
-	//	Ca                   *x509.Certificate
 }
 
 type Deployment struct {
 	Versions []*CertVersion
 	Name     string
+}
+
+func (s *Store) EachCert(fn func(*Cert)) {
+	s.certs.Each(func(_, v interface{}) {
+		fn(v.(*Cert))
+	})
 }
 
 func (cv *CertVersion) Status() string {
@@ -101,7 +106,7 @@ func deploymentByName(a, b interface{}) int {
 	}
 }
 
-func (s *Store) GetCertVersionBySubjectKeyId(keyId []byte) (*CertVersion, bool) {
+func (s *Store) getCertVersionBySubjectKeyId(keyId []byte) (*CertVersion, bool) {
 	_, foundValue := s.certVersions.Find(func(index interface{}, value interface{}) bool {
 		return bytes.Compare(value.(*CertVersion).Certificate.SubjectKeyId, keyId) == 0
 

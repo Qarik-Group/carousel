@@ -1,30 +1,42 @@
-package store
+package app
 
 import (
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+
+	"github.com/starkandwayne/carousel/store"
 )
 
-func (s *Store) Tree() *tview.TreeNode {
-	root := tview.NewTreeNode("∎")
-	it := s.certs.Iterator()
-	for it.Next() {
-		_, v := it.Key(), it.Value()
-		cert := v.(*Cert)
+const treePanel = "TreePanel"
 
+func (a *Application) viewTree() *tview.TreeView {
+	root := tview.NewTreeNode("∎")
+	a.store.EachCert(func(cert *store.Cert) {
 		// only interested in top level certVersions
 		if len(cert.Versions) != 0 && cert.Versions[0].SignedBy != nil {
-			continue
+			return
 		}
 		root.SetChildren(append(root.GetChildren(), addToTree(cert.Versions)...))
-	}
+	})
 
-	return root
+	tree := tview.NewTreeView().
+		SetRoot(root).
+		SetCurrentNode(root)
+
+	tree.SetChangedFunc(func(node *tview.TreeNode) {
+		a.actionShowDetails(node.GetReference())
+	})
+
+	tree.SetSelectedFunc(func(node *tview.TreeNode) {
+		node.SetExpanded(!node.IsExpanded())
+	})
+
+	return tree
 }
 
-func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
+func addToTree(certVersions []*store.CertVersion) []*tview.TreeNode {
 	out := make([]*tview.TreeNode, 0)
 	for _, certVersion := range certVersions {
 		certNode := tview.NewTreeNode(certVersion.Cert.Name).
@@ -37,7 +49,8 @@ func addToTree(certVersions []*CertVersion) []*tview.TreeNode {
 				certNode = n
 			}
 		}
-		certVersionNode := tview.NewTreeNode(fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())).SetReference(certVersion)
+		certVersionNode := tview.NewTreeNode(
+			fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())).SetReference(certVersion)
 		switch certVersion.Status() {
 		case "unused":
 			certVersionNode.SetColor(tcell.Color102)

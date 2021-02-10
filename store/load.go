@@ -66,7 +66,6 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 		for _, c := range credentials {
 			if c.Base.Type == "certificate" {
 				raw := c.Value.(map[string]interface{})
-				// rawCa := raw["ca"].(string)
 				rawCert := raw["certificate"].(string)
 
 				certBlock, _ := pem.Decode([]byte(rawCert))
@@ -75,16 +74,9 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 					return nil, fmt.Errorf("failed to parse certificate: %s", err)
 				}
 
-				// caBlock, _ := pem.Decode([]byte(rawCa))
-				// ca, err := x509.ParseCertificate(caBlock.Bytes)
-				// if err != nil {
-				//	return nil, fmt.Errorf("failed to parse ca: %s", err)
-				// }
-
 				cv, _ := store.certVersions.Get(c.Base.Id)
 				certVersion := cv.(*CertVersion)
 				certVersion.Certificate = certificate
-				//				certVersion.Ca = ca
 			}
 		}
 	}
@@ -98,7 +90,7 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 		if v.SelfSigned {
 			continue
 		}
-		ca, found := store.GetCertVersionBySubjectKeyId(authorityKeyID)
+		ca, found := store.getCertVersionBySubjectKeyId(authorityKeyID)
 		if found {
 			ca.Signs = append(ca.Signs, v)
 			v.SignedBy = ca
