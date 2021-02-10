@@ -60,9 +60,11 @@ func main() {
 	details := tview.NewFlex().
 		AddItem(tview.NewBox().SetBorder(true).SetTitle("welcome"), 0, 1, false)
 
-	tree.SetSelectedFunc(func(node *tview.TreeNode) {
-		// TODO switch detailed view on switching to a node (not only when hitting enter)
+	tree.SetChangedFunc(func(node *tview.TreeNode) {
 		details.Clear().AddItem(s.ShowDetails(node), 0, 1, false)
+	})
+
+	tree.SetSelectedFunc(func(node *tview.TreeNode) {
 		node.SetExpanded(!node.IsExpanded())
 	})
 
