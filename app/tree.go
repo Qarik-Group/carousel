@@ -12,6 +12,10 @@ import (
 const treePanel = "TreePanel"
 
 func (a *Application) viewTree() *tview.TreeView {
+	return tview.NewTreeView()
+}
+
+func (a *Application) renderTree() {
 	root := tview.NewTreeNode("∎")
 	a.store.EachCert(func(cert *store.Cert) {
 		// only interested in top level certVersions
@@ -21,19 +25,45 @@ func (a *Application) viewTree() *tview.TreeView {
 		root.SetChildren(append(root.GetChildren(), addToTree(cert.Versions)...))
 	})
 
-	tree := tview.NewTreeView().
-		SetRoot(root).
-		SetCurrentNode(root)
+	var currentNode *tview.TreeNode
 
-	tree.SetChangedFunc(func(node *tview.TreeNode) {
+	if a.selectedID == "" {
+		currentNode = root
+	}
+
+	root.Walk(func(node, parent *tview.TreeNode) bool {
+		if currentNode != nil {
+			return false
+		}
+		if refToID(node.GetReference()) == a.selectedID {
+			currentNode = node
+			a.actionShowDetails(currentNode.GetReference())
+			return false
+		}
+		return true
+	})
+
+	a.layout.tree.SetRoot(root).SetCurrentNode(currentNode)
+
+	a.layout.tree.SetChangedFunc(func(node *tview.TreeNode) {
+		a.selectedID = refToID(node.GetReference())
 		a.actionShowDetails(node.GetReference())
 	})
 
-	tree.SetSelectedFunc(func(node *tview.TreeNode) {
+	a.layout.tree.SetSelectedFunc(func(node *tview.TreeNode) {
 		node.SetExpanded(!node.IsExpanded())
 	})
+}
 
-	return tree
+func refToID(ref interface{}) string {
+	switch v := ref.(type) {
+	case *store.Cert:
+		return v.Id
+	case *store.CertVersion:
+		return v.Id
+	default:
+		return ""
+	}
 }
 
 func addToTree(certVersions []*store.CertVersion) []*tview.TreeNode {
@@ -49,8 +79,11 @@ func addToTree(certVersions []*store.CertVersion) []*tview.TreeNode {
 				certNode = n
 			}
 		}
-		certVersionNode := tview.NewTreeNode(
-			fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())).SetReference(certVersion)
+		lbl := fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())
+		if certVersion.Transitional {
+			lbl = lbl + " (transitional)"
+		}
+		certVersionNode := tview.NewTreeNode(lbl).SetReference(certVersion)
 		switch certVersion.Status() {
 		case "unused":
 			certVersionNode.SetColor(tcell.Color102)

@@ -3,6 +3,8 @@ package store
 import (
 	"bytes"
 	"crypto/x509"
+	"fmt"
+	"net/http"
 	"time"
 
 	//	"code.cloudfoundry.org/credhub-cli/credhub/credentials"
@@ -37,6 +39,19 @@ type CertVersion struct {
 	SignedBy             *CertVersion
 	Signs                []*CertVersion
 	Certificate          *x509.Certificate
+}
+
+func (s *Store) ToggleTransitional(cv *CertVersion) error {
+	path := fmt.Sprintf("/api/v1/certificates/%s/update_transitional_version", cv.Cert.Id)
+	body := map[string]interface{}{"version": cv.Id}
+	if cv.Transitional == true {
+		body["version"] = nil
+	}
+	_, err := s.credhubClient.Request(http.MethodPut, path, nil, body, true)
+	if err != nil {
+		return fmt.Errorf("failed request: %s with body: %s got: %s", path, body, err)
+	}
+	return nil
 }
 
 type Deployment struct {

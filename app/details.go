@@ -23,6 +23,32 @@ func (a *Application) actionShowDetails(ref interface{}) {
 	a.layout.details.Clear().AddItem(a.renderDetailsFor(ref), 0, 1, false)
 }
 
+func (a *Application) actionToggleTransitional(cv *store.CertVersion) {
+	modal := tview.NewModal().
+		SetText(fmt.Sprintf("Toggle Transitional for %s", cv.Id)).
+		AddButtons([]string{"Continue", "Cancel"})
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		if buttonLabel == "Continue" {
+			a.statusModal("Updating Transitional...")
+			err := a.store.ToggleTransitional(cv)
+			if err != nil {
+				panic(err)
+			}
+			a.statusModal("Refreshing State...")
+			err = a.store.Refresh()
+			if err != nil {
+				panic(err)
+			}
+
+			a.renderTree()
+		}
+		a.SetRoot(a.layout.main, true)
+		a.SetFocus(a.layout.tree)
+	})
+
+	a.SetRoot(modal, true)
+}
+
 func (a *Application) renderDetailsFor(ref interface{}) tview.Primitive {
 	switch v := ref.(type) {
 	case *store.Cert:
@@ -40,8 +66,8 @@ func (a *Application) renderCertDetail(c *store.Cert) tview.Primitive {
 	addSimpleRow(t, "ID", c.Id)
 	addSimpleRow(t, "Name", c.Name)
 
-	a.layout.tree.SetInputCapture(a.nextFocusIncputCaptureHandler(t))
-	t.SetInputCapture(a.nextFocusIncputCaptureHandler(a.layout.tree))
+	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(t))
+	t.SetInputCapture(a.nextFocusInputCaptureHandler(a.layout.tree))
 	return t
 }
 
@@ -71,21 +97,44 @@ func (a *Application) renderCertVersionDetail(cv *store.CertVersion) tview.Primi
 	info.SetBorder(true)
 	info.SetTitle("Raw Certificate")
 
-	a.layout.tree.SetInputCapture(a.nextFocusIncputCaptureHandler(t))
-	t.SetInputCapture(a.nextFocusIncputCaptureHandler(info))
-	info.SetInputCapture(a.nextFocusIncputCaptureHandler(a.layout.tree))
+	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(t))
+	t.SetInputCapture(a.nextFocusInputCaptureHandler(info))
+	info.SetInputCapture(a.nextFocusInputCaptureHandler(a.layout.tree))
 
 	return tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(t, 8, 1, false).
+		AddItem(a.renderCertVersionActions(cv), 1, 1, false).
 		AddItem(info, 0, 1, true)
+}
+
+func (a *Application) renderCertVersionActions(cv *store.CertVersion) tview.Primitive {
+	actions := []string{
+		"Toggle Transitional",
+		"Regenerate",
+		"Delete",
+	}
+
+	out := []string{}
+	for _, lbl := range actions {
+		out = append(out, fmt.Sprintf("[yellow]^%s[white] %s",
+			string([]rune(lbl)[0]), lbl))
+	}
+
+	a.keyBindings[tcell.KeyCtrlT] = func() {
+		a.actionToggleTransitional(cv)
+	}
+
+	return tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(" " + strings.Join(out, "  "))
 }
 
 func (a *Application) renderWelcome() tview.Primitive {
 	h := tview.NewBox().SetBorder(true).SetTitle("help")
 
-	a.layout.tree.SetInputCapture(a.nextFocusIncputCaptureHandler(h))
-	h.SetInputCapture(a.nextFocusIncputCaptureHandler(a.layout.tree))
+	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(h))
+	h.SetInputCapture(a.nextFocusInputCaptureHandler(a.layout.tree))
 	return h
 }
 

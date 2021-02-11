@@ -13,18 +13,20 @@ import (
 	boshdir "github.com/cloudfoundry/bosh-cli/director"
 )
 
-func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, error) {
-	certs, err := ch.GetAllCertificatesMetadata()
-	if err != nil {
-		return nil, err
-	}
-
-	store := Store{
+func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) *Store {
+	return &Store{
 		certs:          treebidimap.NewWith(utils.StringComparator, certByName),
 		certVersions:   treebidimap.NewWith(utils.StringComparator, certVersionById),
 		deployments:    treebidimap.NewWith(utils.StringComparator, deploymentByName),
 		credhubClient:  ch,
 		directorClient: directorClient,
+	}
+}
+
+func (s *Store) Refresh() error {
+	certs, err := s.credhubClient.GetAllCertificatesMetadata()
+	if err != nil {
+		return err
 	}
 
 	for _, certMeta := range certs {
@@ -37,7 +39,7 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 		for _, certMetaVersion := range certMeta.Versions {
 			expiry, err := time.Parse(time.RFC3339, certMetaVersion.ExpiryDate)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse expiry date: %s for cert version: %s",
+				return fmt.Errorf("failed to parse expiry date: %s for cert version: %s",
 					certMetaVersion.ExpiryDate, certMetaVersion.Id)
 			}
 			cv := CertVersion{
@@ -50,17 +52,17 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 				Deployments:          make([]*Deployment, 0),
 			}
 			versions = append(versions, &cv)
-			store.certVersions.Put(cv.Id, &cv)
+			s.certVersions.Put(cv.Id, &cv)
 		}
 		cert.Versions = versions
-		store.certs.Put(certMeta.Name, &cert)
+		s.certs.Put(certMeta.Name, &cert)
 	}
 
 	// for each certMeta fetch raw cert + ca and decode with x509
 	for _, certMeta := range certs {
-		credentials, err := ch.GetAllVersions(certMeta.Name)
+		credentials, err := s.credhubClient.GetAllVersions(certMeta.Name)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, c := range credentials {
@@ -71,10 +73,10 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 				certBlock, _ := pem.Decode([]byte(rawCert))
 				certificate, err := x509.ParseCertificate(certBlock.Bytes)
 				if err != nil {
-					return nil, fmt.Errorf("failed to parse certificate: %s", err)
+					return fmt.Errorf("failed to parse certificate: %s", err)
 				}
 
-				cv, _ := store.certVersions.Get(c.Base.Id)
+				cv, _ := s.certVersions.Get(c.Base.Id)
 				certVersion := cv.(*CertVersion)
 				certVersion.Certificate = certificate
 			}
@@ -82,7 +84,7 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 	}
 
 	// Lookup Ca for each cert
-	it := store.certVersions.Iterator()
+	it := s.certVersions.Iterator()
 	for it.End(); it.Prev(); {
 		_, value := it.Key(), it.Value()
 		v := value.(*CertVersion)
@@ -90,31 +92,31 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 		if v.SelfSigned {
 			continue
 		}
-		ca, found := store.getCertVersionBySubjectKeyId(authorityKeyID)
+		ca, found := s.getCertVersionBySubjectKeyId(authorityKeyID)
 		if found {
 			ca.Signs = append(ca.Signs, v)
 			v.SignedBy = ca
 		} else {
-			return nil, fmt.Errorf("failed to lookup ca CertVersion with id: %s", v.Id)
+			return fmt.Errorf("failed to lookup ca CertVersion with id: %s", v.Id)
 		}
 	}
 
-	deployments, err := store.directorClient.Deployments()
+	deployments, err := s.directorClient.Deployments()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, deployment := range deployments {
 		d := Deployment{
 			Name:     deployment.Name(),
 			Versions: make([]*CertVersion, 0),
 		}
-		store.deployments.Put(d.Name, &d)
+		s.deployments.Put(d.Name, &d)
 		variables, err := deployment.Variables()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, variable := range variables {
-			cv, _ := store.certVersions.Get(variable.ID)
+			cv, _ := s.certVersions.Get(variable.ID)
 			if cv == nil {
 				continue
 			}
@@ -124,5 +126,5 @@ func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) (*Store, err
 		}
 	}
 
-	return &store, nil
+	return nil
 }

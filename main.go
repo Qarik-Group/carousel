@@ -45,7 +45,8 @@ func main() {
 		logger.Fatalf("failed to initialize bosh director client: %s", err)
 	}
 
-	s, err := store.NewStore(ch, d)
+	s := store.NewStore(ch, d)
+	err = s.Refresh()
 	if err != nil {
 		logger.Fatalf("failed to load data: %s", err)
 	}
