@@ -4,9 +4,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/credhub-cli/credhub"
+	"code.cloudfoundry.org/credhub-cli/credhub/credentials"
 	"github.com/emirpasic/gods/maps/treebidimap"
 	"github.com/emirpasic/gods/utils"
 
@@ -58,30 +60,55 @@ func (s *Store) Refresh() error {
 		s.certs.Put(certMeta.Name, &cert)
 	}
 
-	// for each certMeta fetch raw cert + ca and decode with x509
-	for _, certMeta := range certs {
-		credentials, err := s.credhubClient.GetAllVersions(certMeta.Name)
-		if err != nil {
-			return err
-		}
+	// create a channel for work "tasks"
+	ch := make(chan credentials.CertificateMetadata)
 
-		for _, c := range credentials {
-			if c.Base.Type == "certificate" {
-				raw := c.Value.(map[string]interface{})
-				rawCert := raw["certificate"].(string)
+	wg := sync.WaitGroup{}
 
-				certBlock, _ := pem.Decode([]byte(rawCert))
-				certificate, err := x509.ParseCertificate(certBlock.Bytes)
+	// start the workers
+	for t := 0; t < 50; t++ {
+		wg.Add(1)
+		go func(certChan chan credentials.CertificateMetadata, wg *sync.WaitGroup) {
+			for certMeta := range certChan {
+				credentials, err := s.credhubClient.GetAllVersions(certMeta.Name)
 				if err != nil {
-					return fmt.Errorf("failed to parse certificate: %s", err)
+					panic(err)
 				}
 
-				cv, _ := s.certVersions.Get(c.Base.Id)
-				certVersion := cv.(*CertVersion)
-				certVersion.Certificate = certificate
+				for _, c := range credentials {
+					if c.Base.Type == "certificate" {
+						raw := c.Value.(map[string]interface{})
+						rawCert := raw["certificate"].(string)
+
+						certBlock, _ := pem.Decode([]byte(rawCert))
+						certificate, err := x509.ParseCertificate(certBlock.Bytes)
+						if err != nil {
+							panic(fmt.Errorf("failed to parse certificate: %s", err))
+						}
+
+						cv, _ := s.certVersions.Get(c.Base.Id)
+						certVersion := cv.(*CertVersion)
+						certVersion.Certificate = certificate
+					}
+				}
 			}
-		}
+			// we've exited the loop when the dispatcher closed the channel,
+			// so now we can just signal the workGroup we're done
+			wg.Done()
+		}(ch, &wg)
 	}
+
+	// for each certMeta fetch raw cert + ca and decode with x509
+	for _, certMeta := range certs {
+		ch <- certMeta
+
+	}
+
+	// this will cause the workers to stop and exit their receive loop
+	close(ch)
+
+	// make sure they all exit
+	wg.Wait()
 
 	// Lookup Ca for each cert
 	it := s.certVersions.Iterator()
