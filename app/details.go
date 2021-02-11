@@ -63,12 +63,19 @@ func (a *Application) renderDetailsFor(ref interface{}) tview.Primitive {
 func (a *Application) renderCertDetail(c *store.Cert) tview.Primitive {
 	t := tview.NewTable()
 	t.SetBorder(true)
+	t.SetTitle("Credhub & BOSH")
+
 	addSimpleRow(t, "ID", c.Id)
 	addSimpleRow(t, "Name", c.Name)
 
 	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(t))
 	t.SetInputCapture(a.nextFocusInputCaptureHandler(a.layout.tree))
-	return t
+
+	return tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(t, 8, 1, false).
+		AddItem(a.renderCertActions(c), 1, 1, false).
+		AddItem(tview.NewBox().SetBorder(false), 0, 1, true)
 }
 
 func (a *Application) renderCertVersionDetail(cv *store.CertVersion) tview.Primitive {
@@ -111,7 +118,6 @@ func (a *Application) renderCertVersionDetail(cv *store.CertVersion) tview.Primi
 func (a *Application) renderCertVersionActions(cv *store.CertVersion) tview.Primitive {
 	actions := []string{
 		"Toggle Transitional",
-		"Regenerate",
 		"Delete",
 	}
 
@@ -124,6 +130,27 @@ func (a *Application) renderCertVersionActions(cv *store.CertVersion) tview.Prim
 	a.keyBindings[tcell.KeyCtrlT] = func() {
 		a.actionToggleTransitional(cv)
 	}
+
+	return tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(" " + strings.Join(out, "  "))
+}
+
+func (a *Application) renderCertActions(c *store.Cert) tview.Primitive {
+	actions := []string{
+		"Regenerate",
+		"Delete",
+	}
+
+	out := []string{}
+	for _, lbl := range actions {
+		out = append(out, fmt.Sprintf("[yellow]^%s[white] %s",
+			string([]rune(lbl)[0]), lbl))
+	}
+
+	// a.keyBindings[tcell.KeyCtrlT] = func() {
+	//	a.actionToggleTransitional(cv)
+	// }
 
 	return tview.NewTextView().
 		SetDynamicColors(true).
