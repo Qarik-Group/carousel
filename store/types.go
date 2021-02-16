@@ -15,17 +15,19 @@ import (
 )
 
 type Store struct {
-	deployments    *treebidimap.Map
-	certVersions   *treebidimap.Map
-	certs          *treebidimap.Map
-	credhubClient  *credhub.CredHub
-	directorClient boshdir.Director
+	deployments         *treebidimap.Map
+	certVersions        *treebidimap.Map
+	certs               *treebidimap.Map
+	variableDefinitions *treebidimap.Map
+	credhubClient       *credhub.CredHub
+	directorClient      boshdir.Director
 }
 
 type Cert struct {
-	Id       string
-	Name     string
-	Versions []*CertVersion
+	Id                 string
+	Name               string
+	Versions           []*CertVersion
+	VariableDefinition *VariableDefinition
 }
 
 type CertVersion struct {
@@ -57,6 +59,12 @@ func (s *Store) ToggleTransitional(cv *CertVersion) error {
 type Deployment struct {
 	Versions []*CertVersion
 	Name     string
+}
+
+type VariableDefinition struct {
+	Name    string      `yaml:"name"`
+	Type    string      `yaml:"type"`
+	Options interface{} `yaml:"options,omitempty"`
 }
 
 func (s *Store) EachCert(fn func(*Cert)) {
@@ -110,6 +118,21 @@ func deploymentByName(a, b interface{}) int {
 	// Type assertion, program will panic if this is not respected
 	c1 := a.(*Deployment)
 	c2 := b.(*Deployment)
+
+	switch {
+	case c1.Name > c2.Name:
+		return 1
+	case c1.Name < c2.Name:
+		return -1
+	default:
+		return 0
+	}
+}
+
+func veriableDefinitionByName(a, b interface{}) int {
+	// Type assertion, program will panic if this is not respected
+	c1 := a.(*VariableDefinition)
+	c2 := b.(*VariableDefinition)
 
 	switch {
 	case c1.Name > c2.Name:

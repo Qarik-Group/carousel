@@ -18,4 +18,5 @@ require (
 	github.com/pivotal-cf/paraphernalia v0.0.0-20180203224945-a64ae2051c20 // indirect
 	github.com/rivo/tview v0.0.0-20201215042513-a8048787f0c8
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 )

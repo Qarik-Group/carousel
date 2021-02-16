@@ -9,6 +9,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/starkandwayne/carousel/store"
+	"gopkg.in/yaml.v2"
 
 	"github.com/grantae/certinfo"
 
@@ -68,6 +69,17 @@ func (a *Application) renderCertDetail(c *store.Cert) tview.Primitive {
 	addSimpleRow(t, "ID", c.Id)
 	addSimpleRow(t, "Name", c.Name)
 
+	variableDef, err := yaml.Marshal(c.VariableDefinition)
+	if err != nil {
+		panic(err)
+	}
+
+	info := tview.NewTextView().SetText(string(variableDef)).
+		SetTextColor(tcell.Color102)
+
+	info.SetBorder(true)
+	info.SetTitle("BOSH variable definition")
+
 	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(t))
 	t.SetInputCapture(a.nextFocusInputCaptureHandler(a.layout.tree))
 
@@ -75,7 +87,7 @@ func (a *Application) renderCertDetail(c *store.Cert) tview.Primitive {
 		SetDirection(tview.FlexRow).
 		AddItem(t, 8, 1, false).
 		AddItem(a.renderCertActions(c), 1, 1, false).
-		AddItem(tview.NewBox().SetBorder(false), 0, 1, true)
+		AddItem(info, 0, 1, true)
 }
 
 func (a *Application) renderCertVersionDetail(cv *store.CertVersion) tview.Primitive {
