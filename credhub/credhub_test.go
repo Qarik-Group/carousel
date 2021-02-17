@@ -117,9 +117,15 @@ var _ = Describe("Credhub", func() {
 }`,
 					),
 				),
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data?name")),
-					ghttp.RespondWith(http.StatusOK, `{
+			)
+		})
+
+		Context("when all requests return valid data", func() {
+			JustBeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data?name")),
+						ghttp.RespondWith(http.StatusOK, `{
   "data" : [ {
     "type" : "ssh",
     "version_created_at" : "2019-02-01T20:37:52Z",
@@ -140,25 +146,42 @@ var _ = Describe("Credhub", func() {
        "public_key_fingerprint": "some fingerprint"
    }}]
 }`,
+						),
 					),
-				),
-			)
+				)
+			})
+
+			It("finds all credentials", func() {
+				creds, err := credhub.FindAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(creds)).To(Equal(3))
+
+				id := func(element interface{}) string {
+					return element.(*Credential).ID
+				}
+				Expect(creds).To(MatchElements(id, IgnoreExtras, Elements{
+					"355d920a-5f2b-4e99-81f2-47562d7db5d4": Not(BeZero()),
+					"eaebb03f-21a9-41f7-beb0-af4c60aa38d6": Not(BeZero()),
+					"6f7b19fc-3098-485a-b724-0c7d8788f9a5": Not(BeZero()),
+				}))
+
+			})
 		})
 
-		It("finds all credentials", func() {
-			creds, err := credhub.FindAll()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(creds)).To(Equal(3))
+		Context("when a request returns invalid data", func() {
+			JustBeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data?name")),
+						ghttp.RespondWith(http.StatusOK, `{`),
+					),
+				)
+			})
 
-			id := func(element interface{}) string {
-				return element.(*Credential).ID
-			}
-			Expect(creds).To(MatchElements(id, IgnoreExtras, Elements{
-				"355d920a-5f2b-4e99-81f2-47562d7db5d4": Not(BeZero()),
-				"eaebb03f-21a9-41f7-beb0-af4c60aa38d6": Not(BeZero()),
-				"6f7b19fc-3098-485a-b724-0c7d8788f9a5": Not(BeZero()),
-			}))
-
+			It("returns an error", func() {
+				_, err := credhub.FindAll()
+				Expect(err).To(MatchError("unexpected EOF"))
+			})
 		})
 	})
 })
