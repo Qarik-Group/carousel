@@ -30,7 +30,7 @@ func (ch *credhub) FindAll() ([]*Credential, error) {
 
 	// Note: If a certificate credential only has one version and it is
 	// marked as transitional the credential name will not be returned by this endpoint.
-	creds, err := ch.client.FindByPath("/")
+	creds, err := ch.client.FindByPath("")
 	if err != nil {
 		return nil, err
 	}
@@ -118,11 +118,22 @@ func (ch *credhub) getAllVersionsForAllPaths(paths []string) ([]*Credential, err
 
 	results := make([]*Credential, 0)
 
-	select {
-	case err := <-errorChannel:
-		return nil, err
-	case result := <-resultChannel:
-		results = append(results, result)
+	for {
+		select {
+		case result, ok := <-resultChannel:
+			if !ok {
+				return results, nil
+			}
+			results = append(results, result)
+
+		case err, ok := <-errorChannel:
+			if !ok {
+				return results, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return results, nil
