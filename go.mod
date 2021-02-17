@@ -15,6 +15,8 @@ require (
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/onsi/ginkgo v1.14.2
+	github.com/onsi/gomega v1.10.4
 	github.com/pivotal-cf/paraphernalia v0.0.0-20180203224945-a64ae2051c20 // indirect
 	github.com/rivo/tview v0.0.0-20201215042513-a8048787f0c8
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect

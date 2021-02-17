@@ -3,6 +3,7 @@
 pkgs.mkShell {
   buildInputs = [
     pkgs.go
+    pkgs.ginkgo
     pkgs.credhub
   ];
 }

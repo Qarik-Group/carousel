@@ -104,7 +104,7 @@ func (ch *credhub) getAllVersionsForAllPaths(paths []string) ([]*Credential, err
 		}(pathChannel, errorChannel, resultChannel, &waitGroup)
 	}
 
-	for path := range paths {
+	for _, path := range paths {
 		pathChannel <- path
 	}
 
