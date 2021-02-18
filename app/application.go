@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/starkandwayne/carousel/credhub"
 	"github.com/starkandwayne/carousel/store"
 
 	"github.com/gdamore/tcell/v2"
@@ -11,6 +12,7 @@ import (
 type Application struct {
 	*tview.Application
 	store       *store.Store
+	credhub     credhub.CredHub
 	layout      *Layout
 	keyBindings map[tcell.Key]func()
 	selectedID  string
@@ -22,11 +24,12 @@ type Layout struct {
 	details *tview.Flex
 }
 
-func NewApplication(store *store.Store) *Application {
+func NewApplication(store *store.Store, ch credhub.CredHub) *Application {
 	return &Application{
 		Application: tview.NewApplication(),
 		store:       store,
 		keyBindings: make(map[tcell.Key]func(), 0),
+		credhub:     ch,
 	}
 }
 

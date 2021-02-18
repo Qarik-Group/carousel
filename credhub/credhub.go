@@ -13,7 +13,7 @@ import (
 type CredHub interface {
 	FindAll() ([]*Credential, error)
 	ReGenerate(*Credential) error
-	UpdateTransitional(*Credential, bool) error
+	UpdateTransitional(*Credential) error
 }
 
 func NewCredHub(ch *chcli.CredHub) CredHub {
@@ -60,19 +60,32 @@ func (ch *credhub) ReGenerate(*Credential) error {
 	return nil
 }
 
-func (ch *credhub) UpdateTransitional(*Credential, bool) error {
+func (ch *credhub) UpdateTransitional(c *Credential) error {
+	certMeta, err := ch.client.GetCertificateMetadataByName(c.Name)
+	if err != nil {
+		return fmt.Errorf("failed to get certificate meta for: %s got: %s", c.Name, err)
+	}
+
+	path := fmt.Sprintf("/api/v1/certificates/%s/update_transitional_version", certMeta.Id)
+	body := map[string]interface{}{"version": c.ID}
+	if c.Transitional {
+		body["version"] = nil
+	}
+	resp, err := ch.client.Request(http.MethodPut, path, nil, body, true)
+	defer resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("failed request: %s with body: %s got: %s", path, body, err)
+	}
 	return nil
 }
 
 func (ch *credhub) getAllVersions(path string) ([]*Credential, error) {
-	u, _ := url.Parse("/api/v1/data")
-	q := u.Query()
-	q.Add("name", path)
-	u.RawQuery = q.Encode()
+	resp, err := ch.client.Request(http.MethodGet, "/api/v1/data",
+		url.Values{"name": []string{path}}, nil, true)
+	defer resp.Body.Close()
 
-	resp, err := ch.client.Request(http.MethodGet, u.String(), nil, nil, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed request: %s got: %s", u, err)
+		return nil, fmt.Errorf("failed request got: %s", err)
 	}
 
 	result := struct {
@@ -104,11 +117,12 @@ func (ch *credhub) getAllVersionsForAllPaths(paths []string) ([]*Credential, err
 		}(pathChannel, errorChannel, resultChannel, &waitGroup)
 	}
 
-	for _, path := range paths {
-		pathChannel <- path
-	}
-
-	close(pathChannel)
+	go func() {
+		for _, path := range paths {
+			pathChannel <- path
+		}
+		close(pathChannel)
+	}()
 
 	go func() {
 		waitGroup.Wait()
@@ -135,6 +149,4 @@ func (ch *credhub) getAllVersionsForAllPaths(paths []string) ([]*Credential, err
 			}
 		}
 	}
-
-	return results, nil
 }

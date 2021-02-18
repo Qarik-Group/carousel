@@ -24,14 +24,15 @@ func (a *Application) actionShowDetails(ref interface{}) {
 	a.layout.details.Clear().AddItem(a.renderDetailsFor(ref), 0, 1, false)
 }
 
-func (a *Application) actionToggleTransitional(cv *store.CertVersion) {
+func (a *Application) actionToggleTransitional(cred *store.Credential) {
 	modal := tview.NewModal().
-		SetText(fmt.Sprintf("Toggle Transitional for %s", cv.Id)).
-		AddButtons([]string{"Continue", "Cancel"})
+		SetText(fmt.Sprintf("Set transitional=%s for %s@%s",
+			strconv.FormatBool(!cred.Transitional),
+			cred.Name, cred.ID)).AddButtons([]string{"Continue", "Cancel"})
 	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		if buttonLabel == "Continue" {
 			a.statusModal("Updating Transitional...")
-			err := a.store.ToggleTransitional(cv)
+			err := a.credhub.UpdateTransitional(cred.Credential)
 			if err != nil {
 				panic(err)
 			}
@@ -52,24 +53,23 @@ func (a *Application) actionToggleTransitional(cv *store.CertVersion) {
 
 func (a *Application) renderDetailsFor(ref interface{}) tview.Primitive {
 	switch v := ref.(type) {
-	case *store.Cert:
-		return a.renderCertDetail(v)
-	case *store.CertVersion:
-		return a.renderCertVersionDetail(v)
+	case *store.Path:
+		return a.renderPathDetail(v)
+	case *store.Credential:
+		return a.renderCredentialDetail(v)
 	default:
 		return a.renderWelcome()
 	}
 }
 
-func (a *Application) renderCertDetail(c *store.Cert) tview.Primitive {
+func (a *Application) renderPathDetail(p *store.Path) tview.Primitive {
 	t := tview.NewTable()
 	t.SetBorder(true)
 	t.SetTitle("Credhub & BOSH")
 
-	addSimpleRow(t, "ID", c.Id)
-	addSimpleRow(t, "Name", c.Name)
+	addSimpleRow(t, "Name", p.Name)
 
-	variableDef, err := yaml.Marshal(c.VariableDefinition)
+	variableDef, err := yaml.Marshal(p.VariableDefinition)
 	if err != nil {
 		panic(err)
 	}
@@ -85,27 +85,27 @@ func (a *Application) renderCertDetail(c *store.Cert) tview.Primitive {
 
 	return tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(t, 8, 1, false).
-		AddItem(a.renderCertActions(c), 1, 1, false).
+		AddItem(t, 3, 1, false).
+		AddItem(a.renderPathActions(p), 1, 1, false).
 		AddItem(info, 0, 1, true)
 }
 
-func (a *Application) renderCertVersionDetail(cv *store.CertVersion) tview.Primitive {
+func (a *Application) renderCredentialDetail(cred *store.Credential) tview.Primitive {
 	t := tview.NewTable()
 	t.SetBorder(true)
 	t.SetTitle("Credhub & BOSH")
 
-	addSimpleRow(t, "ID", cv.Id)
+	addSimpleRow(t, "ID", cred.ID)
 	addSimpleRow(t, "Expiry", fmt.Sprintf("%s (%s)",
-		cv.Expiry.Format(time.RFC3339),
-		humanize.RelTime(cv.Expiry, time.Now(), "ago", "from now")))
-	addSimpleRow(t, "Transitional", strconv.FormatBool(cv.Transitional))
-	addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cv.CertificateAuthority))
-	addSimpleRow(t, "Self Signed", strconv.FormatBool(cv.SelfSigned))
+		cred.ExpiryDate.Format(time.RFC3339),
+		humanize.RelTime(*cred.ExpiryDate, time.Now(), "ago", "from now")))
+	addSimpleRow(t, "Transitional", strconv.FormatBool(cred.Transitional))
+	addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cred.CertificateAuthority))
+	addSimpleRow(t, "Self Signed", strconv.FormatBool(cred.SelfSigned))
 
-	addSimpleRow(t, "Deployments", renderDeployments(cv.Deployments))
+	addSimpleRow(t, "Deployments", renderDeployments(cred.Deployments))
 
-	i, err := certinfo.CertificateText(cv.Certificate)
+	i, err := certinfo.CertificateText(cred.Certificate)
 	if err != nil {
 		panic(err)
 	}
@@ -123,11 +123,11 @@ func (a *Application) renderCertVersionDetail(cv *store.CertVersion) tview.Primi
 	return tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(t, 8, 1, false).
-		AddItem(a.renderCertVersionActions(cv), 1, 1, false).
+		AddItem(a.renderCredentialActions(cred), 1, 1, false).
 		AddItem(info, 0, 1, true)
 }
 
-func (a *Application) renderCertVersionActions(cv *store.CertVersion) tview.Primitive {
+func (a *Application) renderCredentialActions(cred *store.Credential) tview.Primitive {
 	actions := []string{
 		"Toggle Transitional",
 		"Delete",
@@ -140,7 +140,7 @@ func (a *Application) renderCertVersionActions(cv *store.CertVersion) tview.Prim
 	}
 
 	a.keyBindings[tcell.KeyCtrlT] = func() {
-		a.actionToggleTransitional(cv)
+		a.actionToggleTransitional(cred)
 	}
 
 	return tview.NewTextView().
@@ -148,7 +148,7 @@ func (a *Application) renderCertVersionActions(cv *store.CertVersion) tview.Prim
 		SetText(" " + strings.Join(out, "  "))
 }
 
-func (a *Application) renderCertActions(c *store.Cert) tview.Primitive {
+func (a *Application) renderPathActions(p *store.Path) tview.Primitive {
 	actions := []string{
 		"Regenerate",
 		"Delete",

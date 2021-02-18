@@ -1,134 +1,73 @@
 package store
 
 import (
-	"crypto/x509"
-	"encoding/pem"
+	"bytes"
 	"fmt"
 	"path"
 	"strconv"
-	"sync"
-	"time"
 
-	"code.cloudfoundry.org/credhub-cli/credhub"
-	"code.cloudfoundry.org/credhub-cli/credhub/credentials"
 	"github.com/emirpasic/gods/maps/treebidimap"
 	"github.com/emirpasic/gods/utils"
+	"github.com/starkandwayne/carousel/credhub"
 	"gopkg.in/yaml.v2"
 
 	boshdir "github.com/cloudfoundry/bosh-cli/director"
 )
 
-func NewStore(ch *credhub.CredHub, directorClient boshdir.Director) *Store {
+func NewStore(ch credhub.CredHub, directorClient boshdir.Director) *Store {
 	return &Store{
-		certs:               treebidimap.NewWith(utils.StringComparator, certByName),
-		certVersions:        treebidimap.NewWith(utils.StringComparator, certVersionById),
+		paths:               treebidimap.NewWith(utils.StringComparator, pathByName),
+		credentials:         treebidimap.NewWith(utils.StringComparator, credentialById),
 		deployments:         treebidimap.NewWith(utils.StringComparator, deploymentByName),
 		variableDefinitions: treebidimap.NewWith(utils.StringComparator, veriableDefinitionByName),
-		credhubClient:       ch,
+		credhub:             ch,
 		directorClient:      directorClient,
 	}
 }
 
 func (s *Store) Refresh() error {
-	certs, err := s.credhubClient.GetAllCertificatesMetadata()
+	s.paths.Clear()
+	s.credentials.Clear()
+	s.deployments.Clear()
+	s.variableDefinitions.Clear()
+
+	creds, err := s.credhub.FindAll()
 	if err != nil {
 		return err
 	}
 
-	for _, certMeta := range certs {
-		cert := Cert{
-			Id:   certMeta.Id,
-			Name: certMeta.Name,
+	for _, cred := range creds {
+		var path *Path
+		p, found := s.paths.Get(cred.Name)
+		if found {
+			path = p.(*Path)
+		} else {
+			path = &Path{Name: cred.Name}
+			s.paths.Put(cred.Name, path)
 		}
 
-		versions := make([]*CertVersion, 0)
-		for _, certMetaVersion := range certMeta.Versions {
-			expiry, err := time.Parse(time.RFC3339, certMetaVersion.ExpiryDate)
-			if err != nil {
-				return fmt.Errorf("failed to parse expiry date: %s for cert version: %s",
-					certMetaVersion.ExpiryDate, certMetaVersion.Id)
-			}
-			cv := CertVersion{
-				Id:                   certMetaVersion.Id,
-				Cert:                 &cert,
-				Transitional:         certMetaVersion.Transitional,
-				CertificateAuthority: certMetaVersion.CertificateAuthority,
-				SelfSigned:           certMetaVersion.SelfSigned,
-				Expiry:               expiry,
-				Deployments:          make([]*Deployment, 0),
-			}
-			versions = append(versions, &cv)
-			s.certVersions.Put(cv.Id, &cv)
+		c := Credential{
+			Credential:  cred,
+			Deployments: make([]*Deployment, 0),
+			Path:        path,
 		}
-		cert.Versions = versions
-		s.certs.Put(certMeta.Name, &cert)
+
+		path.AppendVersion(&c)
+		s.credentials.Put(cred.ID, &c)
 	}
-
-	// create a channel for work "tasks"
-	ch := make(chan credentials.CertificateMetadata)
-
-	wg := sync.WaitGroup{}
-
-	// start the workers
-	for t := 0; t < 50; t++ {
-		wg.Add(1)
-		go func(certChan chan credentials.CertificateMetadata, wg *sync.WaitGroup) {
-			for certMeta := range certChan {
-				credentials, err := s.credhubClient.GetAllVersions(certMeta.Name)
-				if err != nil {
-					panic(err)
-				}
-
-				for _, c := range credentials {
-					if c.Base.Type == "certificate" {
-						raw := c.Value.(map[string]interface{})
-						rawCert := raw["certificate"].(string)
-
-						certBlock, _ := pem.Decode([]byte(rawCert))
-						certificate, err := x509.ParseCertificate(certBlock.Bytes)
-						if err != nil {
-							panic(fmt.Errorf("failed to parse certificate: %s", err))
-						}
-
-						cv, _ := s.certVersions.Get(c.Base.Id)
-						certVersion := cv.(*CertVersion)
-						certVersion.Certificate = certificate
-					}
-				}
-			}
-			// we've exited the loop when the dispatcher closed the channel,
-			// so now we can just signal the workGroup we're done
-			wg.Done()
-		}(ch, &wg)
-	}
-
-	// for each certMeta fetch raw cert + ca and decode with x509
-	for _, certMeta := range certs {
-		ch <- certMeta
-
-	}
-
-	// this will cause the workers to stop and exit their receive loop
-	close(ch)
-
-	// make sure they all exit
-	wg.Wait()
 
 	// Lookup Ca for each cert
-	it := s.certVersions.Iterator()
-	for it.End(); it.Prev(); {
-		_, value := it.Key(), it.Value()
-		v := value.(*CertVersion)
-		authorityKeyID := v.Certificate.AuthorityKeyId
-		if v.SelfSigned {
+	for _, cert := range s.Certificates() {
+		authorityKeyID := cert.Certificate.AuthorityKeyId
+		if cert.SelfSigned {
 			continue
 		}
 		ca, found := s.getCertVersionBySubjectKeyId(authorityKeyID)
 		if found {
-			ca.Signs = append(ca.Signs, v)
-			v.SignedBy = ca
+			ca.Signs = append(ca.Signs, cert)
+			cert.SignedBy = ca
 		} else {
-			return fmt.Errorf("failed to lookup ca CertVersion with id: %s", v.Id)
+			return fmt.Errorf("failed to lookup ca Credential with id: %s", cert.ID)
 		}
 	}
 
@@ -144,7 +83,7 @@ func (s *Store) Refresh() error {
 	for _, deployment := range deployments {
 		d := Deployment{
 			Name:     deployment.Name(),
-			Versions: make([]*CertVersion, 0),
+			Versions: make([]*Credential, 0),
 		}
 		s.deployments.Put(d.Name, &d)
 		variables, err := deployment.Variables()
@@ -152,13 +91,13 @@ func (s *Store) Refresh() error {
 			return err
 		}
 		for _, variable := range variables {
-			cv, _ := s.certVersions.Get(variable.ID)
-			if cv == nil {
-				continue
+			credential, found := s.GetCredential(variable.ID)
+			if !found {
+				return fmt.Errorf("failed to lookup credential for bosh variable with id: %s",
+					variable.ID)
 			}
-			certVersion := cv.(*CertVersion)
-			certVersion.Deployments = append(certVersion.Deployments, &d)
-			d.Versions = append(d.Versions, certVersion)
+			credential.Deployments = append(credential.Deployments, &d)
+			d.Versions = append(d.Versions, credential)
 		}
 
 		rawDeploymentManifest, err := deployment.Manifest()
@@ -175,12 +114,12 @@ func (s *Store) Refresh() error {
 			name := path.Join("/", directorInfo.Name, deployment.Name(), varDef.Name)
 			s.variableDefinitions.Put(name, varDef)
 
-			c, _ := s.certs.Get(name)
-			if c == nil {
-				continue
+			p, found := s.GetPath(name)
+			if !found {
+				return fmt.Errorf("failed to lookup path for variable definiton with name: %s",
+					name)
 			}
-			cert := c.(*Cert)
-			cert.VariableDefinition = varDef
+			p.VariableDefinition = varDef
 		}
 
 		configs, err := s.directorClient.ListDeploymentConfigs(d.Name)
@@ -203,12 +142,13 @@ func (s *Store) Refresh() error {
 				for _, varDef := range varDefs {
 					s.variableDefinitions.Put(varDef.Name, varDef)
 
-					c, _ := s.certs.Get(varDef.Name)
-					if c == nil {
-						continue
+					p, found := s.GetPath(varDef.Name)
+					if !found {
+						return fmt.Errorf("failed to lookup path for variable definiton with name: %s",
+							varDef.Name)
+
 					}
-					cert := c.(*Cert)
-					cert.VariableDefinition = varDef
+					p.VariableDefinition = varDef
 				}
 
 			}
@@ -231,4 +171,17 @@ func rawManifestToVariableDefinitions(raw string) ([]*VariableDefinition, error)
 
 type manifest struct {
 	Variables []*VariableDefinition `yaml:"variables"`
+}
+
+func (s *Store) getCertVersionBySubjectKeyId(keyId []byte) (*Credential, bool) {
+	_, foundValue := s.credentials.Find(func(index interface{}, value interface{}) bool {
+		if value.(*Credential).Certificate != nil {
+			return bytes.Compare(value.(*Credential).Certificate.SubjectKeyId, keyId) == 0
+		}
+		return false
+	})
+	if foundValue != nil {
+		return foundValue.(*Credential), true
+	}
+	return nil, false
 }

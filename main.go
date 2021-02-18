@@ -4,9 +4,10 @@ import (
 	"log"
 	"os"
 
-	"code.cloudfoundry.org/credhub-cli/credhub"
+	credhubcli "code.cloudfoundry.org/credhub-cli/credhub"
 	"code.cloudfoundry.org/credhub-cli/credhub/auth"
 	"github.com/starkandwayne/carousel/app"
+	"github.com/starkandwayne/carousel/credhub"
 	"github.com/starkandwayne/carousel/store"
 
 	boshdir "github.com/cloudfoundry/bosh-cli/director"
@@ -21,16 +22,16 @@ func main() {
 		logger.Fatalf("failed to load environment configuration: %s", err)
 	}
 
-	ch, err := credhub.New(
+	chcli, err := credhubcli.New(
 		cfg.Credhub.Server,
-		credhub.SkipTLSValidation(true), // TODO use CA
-		credhub.Auth(auth.UaaClientCredentials(cfg.Credhub.Client, cfg.Credhub.Secret)),
+		credhubcli.SkipTLSValidation(true), // TODO use CA
+		credhubcli.Auth(auth.UaaClientCredentials(cfg.Credhub.Client, cfg.Credhub.Secret)),
 	)
 	if err != nil {
 		logger.Fatalf("failed to connect to Credhub: %s", err)
 	}
 
-	authURL, err := ch.AuthURL()
+	authURL, err := chcli.AuthURL()
 	if err != nil {
 		logger.Fatalf("failed to lookup auth url: %s", err)
 	}
@@ -45,13 +46,15 @@ func main() {
 		logger.Fatalf("failed to initialize bosh director client: %s", err)
 	}
 
+	ch := credhub.NewCredHub(chcli)
+
 	s := store.NewStore(ch, d)
 	err = s.Refresh()
 	if err != nil {
 		logger.Fatalf("failed to load data: %s", err)
 	}
 
-	app := app.NewApplication(s).Init()
+	app := app.NewApplication(s, ch).Init()
 
 	if err := app.Run(); err != nil {
 		panic(err)

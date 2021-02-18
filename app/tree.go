@@ -17,12 +17,12 @@ func (a *Application) viewTree() *tview.TreeView {
 
 func (a *Application) renderTree() {
 	root := tview.NewTreeNode("∎")
-	a.store.EachCert(func(cert *store.Cert) {
+	a.store.EachPath(func(path *store.Path) {
 		// only interested in top level certVersions
-		if len(cert.Versions) != 0 && cert.Versions[0].SignedBy != nil {
+		if len(path.Versions) != 0 && path.Versions[0].SignedBy != nil {
 			return
 		}
-		root.SetChildren(append(root.GetChildren(), addToTree(cert.Versions)...))
+		root.SetChildren(append(root.GetChildren(), addToTree(path.Versions)...))
 	})
 
 	var currentNode *tview.TreeNode
@@ -57,43 +57,44 @@ func (a *Application) renderTree() {
 
 func refToID(ref interface{}) string {
 	switch v := ref.(type) {
-	case *store.Cert:
-		return v.Id
-	case *store.CertVersion:
-		return v.Id
+	case *store.Credential:
+		return v.ID
+	case *store.Path:
+		return v.Name
 	default:
 		return ""
 	}
 }
 
-func addToTree(certVersions []*store.CertVersion) []*tview.TreeNode {
+func addToTree(creds []*store.Credential) []*tview.TreeNode {
 	out := make([]*tview.TreeNode, 0)
-	for _, certVersion := range certVersions {
-		certNode := tview.NewTreeNode(certVersion.Cert.Name).
-			SetReference(certVersion.Cert)
+	for _, cred := range creds {
+		pathNode := tview.NewTreeNode(cred.Path.Name).
+			SetReference(cred.Path)
 
 		var exists bool
 		for _, n := range out {
-			if n.GetText() == certVersion.Cert.Name {
+			if refToID(n.GetReference()) == refToID(cred.Path) {
 				exists = true
-				certNode = n
+				pathNode = n
 			}
 		}
-		lbl := fmt.Sprintf("%s (%s)", certVersion.Id, certVersion.Status())
-		if certVersion.Transitional {
+
+		lbl := fmt.Sprintf("%s (%s)", cred.ID, cred.Status())
+		if cred.Transitional {
 			lbl = lbl + " (transitional)"
 		}
-		certVersionNode := tview.NewTreeNode(lbl).SetReference(certVersion)
-		switch certVersion.Status() {
+		credNode := tview.NewTreeNode(lbl).SetReference(cred)
+		switch cred.Status() {
 		case "unused":
-			certVersionNode.SetColor(tcell.Color102)
+			credNode.SetColor(tcell.Color102)
 		case "notice":
-			certVersionNode.SetColor(tcell.ColorDarkGoldenrod)
+			credNode.SetColor(tcell.ColorDarkGoldenrod)
 		}
-		certNode.AddChild(certVersionNode)
-		certVersionNode.SetChildren(addToTree(certVersion.Signs))
+		pathNode.AddChild(credNode)
+		credNode.SetChildren(addToTree(cred.Signs))
 		if !exists {
-			out = append(out, certNode)
+			out = append(out, pathNode)
 		}
 	}
 	return out
