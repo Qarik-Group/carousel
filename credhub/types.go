@@ -1,7 +1,10 @@
 package credhub
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"time"
 )
 
 type CredentialType string
@@ -16,16 +19,16 @@ type Credential struct {
 	Metadata             Metadata        `json:"metadata"`
 	Name                 string          `json:"name"`
 	Type                 CredentialType  `json:"type"`
-	VersionCreatedAt     string          `json:"version_created_at"`
+	VersionCreatedAt     *time.Time      `json:"version_created_at"`
 	CertificateAuthority bool            `json:"certificate_authority,omitempty"`
-	ExpiryDate           string          `json:"expiry_date,omitempty"`
+	ExpiryDate           *time.Time      `json:"expiry_date,omitempty"`
 	Generated            bool            `json:"generated,omitempty"`
 	SelfSigned           bool            `json:"self_signed,omitempty"`
 	Transitional         bool            `json:"transitional,omitempty"`
 	RawValue             json.RawMessage `json:"value"`
 
-	Ca                   string                 `json:"_"`
-	Certificate          string                 `json:"_"`
+	Ca                   *x509.Certificate      `json:"_"`
+	Certificate          *x509.Certificate      `json:"_"`
 	PrivateKey           string                 `json:"_"`
 	PublicKey            string                 `json:"_"`
 	PublicKeyFingerprint string                 `json:"_"`
@@ -69,13 +72,29 @@ func (c *Credential) UnmarshalJSON(b []byte) error {
 		if err := json.Unmarshal(c.RawValue, &c.Password); err != nil {
 			return err
 		}
-	case Certificate, SSH, RSA, User:
+	case Certificate:
 		v := rawValue{}
 		if err := json.Unmarshal(c.RawValue, &v); err != nil {
 			return err
 		}
-		c.Ca = v.Ca
-		c.Certificate = v.Certificate
+		ca, err := parseCertificate(v.Ca)
+		if err != nil {
+			return err
+		}
+		c.Ca = ca
+		cert, err := parseCertificate(v.Certificate)
+		if err != nil {
+			return err
+		}
+		c.Certificate = cert
+		c.PrivateKey = v.PrivateKey
+
+	case SSH, RSA, User:
+		v := rawValue{}
+		if err := json.Unmarshal(c.RawValue, &v); err != nil {
+			return err
+		}
+
 		c.PrivateKey = v.PrivateKey
 		c.PublicKey = v.PublicKey
 		c.PublicKeyFingerprint = v.PublicKeyFingerprint
@@ -85,4 +104,9 @@ func (c *Credential) UnmarshalJSON(b []byte) error {
 	}
 
 	return nil
+}
+
+func parseCertificate(raw string) (*x509.Certificate, error) {
+	certBlock, _ := pem.Decode([]byte(raw))
+	return x509.ParseCertificate(certBlock.Bytes)
 }
