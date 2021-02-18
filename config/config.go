@@ -1,4 +1,4 @@
-package main
+package config
 
 import "github.com/kelseyhightower/envconfig"
 
@@ -21,7 +21,7 @@ type Credhub struct {
 	CaCert string `required:"true" split_words:"true"`
 }
 
-func loadConfig() (*Config, error) {
+func LoadConfig() (*Config, error) {
 	var b Bosh
 	err := envconfig.Process("bosh", &b)
 	if err != nil {
