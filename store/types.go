@@ -7,9 +7,9 @@ import (
 )
 
 type Path struct {
-	Name               string
-	Versions           []*Credential
-	VariableDefinition *VariableDefinition
+	Name               string              `json:"name"`
+	Versions           []*Credential       `json:"-"`
+	VariableDefinition *VariableDefinition `json:"variable_definition"`
 }
 
 func (p *Path) AppendVersion(c *Credential) {
@@ -18,10 +18,10 @@ func (p *Path) AppendVersion(c *Credential) {
 
 type Credential struct {
 	*credhub.Credential
-	Deployments []*Deployment
-	SignedBy    *Credential
-	Signs       []*Credential
-	Path        *Path
+	Deployments []*Deployment `json:"deployments"`
+	SignedBy    *Credential   `json:"-"`
+	Signs       []*Credential `json:"-"`
+	Path        *Path         `json:"path"`
 }
 
 func (c *Credential) Status() string {
@@ -39,12 +39,12 @@ func (c *Credential) Status() string {
 }
 
 type Deployment struct {
-	Versions []*Credential
-	Name     string
+	Versions []*Credential `json:"-"`
+	Name     string        `json:"name"`
 }
 
 type VariableDefinition struct {
-	Name    string      `yaml:"name"`
-	Type    string      `yaml:"type"`
-	Options interface{} `yaml:"options,omitempty"`
+	Name    string                 `yaml:"name" json:"name"`
+	Type    string                 `yaml:"type" json:"type"`
+	Options map[string]interface{} `yaml:"options,omitempty" json:"options,omitempty"`
 }

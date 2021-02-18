@@ -25,7 +25,7 @@ type Credential struct {
 	Generated            bool            `json:"generated,omitempty"`
 	SelfSigned           bool            `json:"self_signed,omitempty"`
 	Transitional         bool            `json:"transitional,omitempty"`
-	RawValue             json.RawMessage `json:"value"`
+	RawValue             json.RawMessage `json:"value,omitempty"`
 
 	Ca                   *x509.Certificate      `json:"_"`
 	Certificate          *x509.Certificate      `json:"_"`
