@@ -3,22 +3,21 @@ package cmd
 import (
 	"log"
 	"os"
+	"sync"
 
 	credhubcli "code.cloudfoundry.org/credhub-cli/credhub"
 	"code.cloudfoundry.org/credhub-cli/credhub/auth"
+	cbosh "github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/config"
 	ccredhub "github.com/starkandwayne/carousel/credhub"
-	cstore "github.com/starkandwayne/carousel/store"
-
-	boshdir "github.com/cloudfoundry/bosh-cli/director"
-	boshuaa "github.com/cloudfoundry/bosh-cli/uaa"
-	boshlog "github.com/cloudfoundry/bosh-utils/logger"
+	. "github.com/starkandwayne/carousel/state"
 )
 
 var (
-	logger  *log.Logger
-	credhub ccredhub.CredHub
-	store   *cstore.Store
+	logger   *log.Logger
+	credhub  ccredhub.CredHub
+	director cbosh.Director
+	state    State
 )
 
 func initialize() {
@@ -37,66 +36,48 @@ func initialize() {
 		logger.Fatalf("failed to connect to Credhub: %s", err)
 	}
 
-	authURL, err := chcli.AuthURL()
-	if err != nil {
-		logger.Fatalf("failed to lookup auth url: %s", err)
-	}
-
-	uaa, err := buildUAA(cfg.Bosh, authURL)
-	if err != nil {
-		logger.Fatalf("failed to initialize uaa client: %s", err)
-	}
-
-	d, err := buildDirector(cfg.Bosh, uaa)
-	if err != nil {
-		logger.Fatalf("failed to initialize bosh director client: %s", err)
-	}
-
 	credhub = ccredhub.NewCredHub(chcli)
 
-	store = cstore.NewStore(credhub, d)
-}
-
-func buildUAA(cfg *config.Bosh, authURL string) (boshuaa.UAA, error) {
-	logger := boshlog.NewLogger(boshlog.LevelError)
-	factory := boshuaa.NewFactory(logger)
-
-	// Build a UAA config from a URL.
-	// HTTPS is required and certificates are always verified.
-	config, err := boshuaa.NewConfigFromURL(authURL)
+	director, err = cbosh.NewDirector(cfg.Bosh)
 	if err != nil {
-		return nil, err
+		logger.Fatalf("failed to connect to BOSH Director: %s", err)
 	}
 
-	// Set client credentials for authentication.
-	// Machine level access should typically use a client instead of a particular user.
-	config.Client = cfg.Client
-	config.ClientSecret = cfg.ClientSecret
-
-	// Configure trusted CA certificates.
-	// If nothing is provided default system certificates are used.
-	config.CACert = cfg.CaCert
-
-	return factory.New(config)
+	state = NewState()
 }
 
-func buildDirector(cfg *config.Bosh, uaa boshuaa.UAA) (boshdir.Director, error) {
-	logger := boshlog.NewLogger(boshlog.LevelError)
-	factory := boshdir.NewFactory(logger)
+func refresh() {
+	var (
+		wg          sync.WaitGroup
+		err         error
+		credentials []*ccredhub.Credential
+		variables   []*cbosh.Variable
+	)
 
-	// Build a Director config from address-like string.
-	// HTTPS is required and certificates are always verified.
-	factoryConfig, err := boshdir.NewConfigFromURL(cfg.Environment)
+	wg.Add(1)
+	go func(wg *sync.WaitGroup, credentials *[]*ccredhub.Credential) {
+		defer wg.Done()
+		*credentials, err = credhub.FindAll()
+		if err != nil {
+			logger.Fatalf("failed to load credentials from Credhub: %s", err)
+		}
+
+	}(&wg, &credentials)
+
+	wg.Add(1)
+	go func(wg *sync.WaitGroup, variables *[]*cbosh.Variable) {
+		defer wg.Done()
+		*variables, err = director.GetVariables()
+		if err != nil {
+			logger.Fatalf("failed to load variables from BOSH Director: %s", err)
+		}
+
+	}(&wg, &variables)
+
+	wg.Wait()
+
+	err = state.Update(credentials, variables)
 	if err != nil {
-		return nil, err
+		logger.Fatalf("failed to update state got: %s", err)
 	}
-
-	// Configure custom trusted CA certificates.
-	// If nothing is provided default system certificates are used.
-	factoryConfig.CACert = cfg.CaCert
-
-	// Allow Director to fetch UAA tokens when necessary.
-	factoryConfig.TokenFunc = boshuaa.NewClientTokenSession(uaa).TokenFunc
-
-	return factory.New(factoryConfig, boshdir.NewNoopTaskReporter(), boshdir.NewNoopFileReporter())
 }

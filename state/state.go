@@ -10,11 +10,11 @@ import (
 type Filter func(*Credential) bool
 
 type State interface {
-	Update([]*credhub.Credential, []*bosh.Variable)
+	Update([]*credhub.Credential, []*bosh.Variable) error
 	Credentials(...Filter) []*Credential
 }
 
-func NewState() *state {
+func NewState() State {
 	return &state{
 		deployments: treebidimap.NewWith(utils.StringComparator, deploymentComparator),
 		paths:       treebidimap.NewWith(utils.StringComparator, pathComparator),

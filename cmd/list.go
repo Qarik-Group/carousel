@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	cstore "github.com/starkandwayne/carousel/store"
 )
 
 // listCmd represents the list command
@@ -35,21 +34,14 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
+		refresh()
 
-		err := store.Refresh()
+		out, err := json.Marshal(state.Credentials())
 		if err != nil {
-			logger.Fatalf("failed to load data: %s", err)
+			logger.Fatalf("failed to mashal: %s", err)
 		}
 
-		store.EachCredential(func(c *cstore.Credential) {
-			c.RawValue = nil
-			out, err := json.Marshal(c)
-			if err != nil {
-				logger.Fatalf("failed to mashal: %s", err)
-			}
-
-			fmt.Println(string(out))
-		})
+		fmt.Println(string(out))
 	},
 }
 
