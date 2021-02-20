@@ -16,7 +16,7 @@ const (
 
 type Credential struct {
 	ID                   string          `json:"id"`
-	Metadata             Metadata        `json:"metadata"`
+	Metadata             Metadata        `json:"metadata,omitempty"`
 	Name                 string          `json:"name"`
 	Type                 CredentialType  `json:"type"`
 	VersionCreatedAt     *time.Time      `json:"version_created_at"`
