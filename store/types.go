@@ -22,6 +22,7 @@ type Credential struct {
 	Deployments []*Deployment `json:"-"`
 	SignedBy    *Credential   `json:"-"`
 	Signs       []*Credential `json:"-"`
+	Latest      bool          `json:"latest"`
 	Path        *Path         `json:"-"`
 }
 

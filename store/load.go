@@ -71,6 +71,17 @@ func (s *Store) Refresh() error {
 		}
 	}
 
+	// Mark last Credential per Path as Latest
+	s.EachPath(func(p *Path) {
+		latest := p.Versions[0] // There can never be a path without at least one version
+		for _, c := range p.Versions {
+			if latest.VersionCreatedAt.Before(*c.VersionCreatedAt) {
+				latest = c
+			}
+		}
+		latest.Latest = true
+	})
+
 	directorInfo, err := s.directorClient.Info()
 	if err != nil {
 		return err
