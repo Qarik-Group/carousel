@@ -9,20 +9,20 @@ import (
 
 type Path struct {
 	Name               string                   `json:"name"`
-	Versions           []*Credential            `json:"-"`
+	Versions           Credentials              `json:"-"`
 	VariableDefinition *bosh.VariableDefinition `json:"variable_definition"`
 }
 
 type Deployment struct {
-	Versions []*Credential `json:"-"`
-	Name     string        `json:"name"`
+	Versions Credentials `json:"-"`
+	Name     string      `json:"name"`
 }
 
 type Credential struct {
 	*credhub.Credential
 	Deployments []*Deployment `json:"-"`
 	SignedBy    *Credential   `json:"-"`
-	Signs       []*Credential `json:"-"`
+	Signs       Credentials   `json:"-"`
 	Latest      bool          `json:"latest"`
 	Signing     *bool         `json:"signing,omitempty"`
 	Path        *Path         `json:"-"`
@@ -50,4 +50,18 @@ func (c *Credential) MarshalJSON() ([]byte, error) {
 		DeploymentsList: deployments,
 		UpdateMode:      updateMode,
 	})
+}
+
+type Credentials []*Credential
+
+func (c Credentials) Len() int {
+	return len(c)
+}
+
+func (c Credentials) Less(i, j int) bool {
+	return c[i].VersionCreatedAt.Before(*c[j].VersionCreatedAt)
+}
+
+func (c Credentials) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
 }

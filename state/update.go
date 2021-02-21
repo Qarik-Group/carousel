@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/credhub"
@@ -45,24 +46,29 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 		}
 	}
 
+	// Sort Credentials
+	s.eachPath(func(p *Path) {
+		sort.Sort(p.Versions)
+	})
+	s.eachDeployment(func(d *Deployment) {
+		sort.Sort(d.Versions)
+	})
+	s.eachCredential(func(c *Credential) {
+		sort.Sort(c.Signs)
+	})
+
 	// Mark last Credential per Path as Latest
 	s.eachPath(func(p *Path) {
-		latest := p.Versions[0] // There can never be a path without at least one version
-		var signing *Credential
+		// There can never be a path without at least one version
+		// slice already sorted above
+		p.Versions[0].Latest = true
 		for _, c := range p.Versions {
-			if latest.VersionCreatedAt.Before(*c.VersionCreatedAt) {
-				latest = c
-			}
-			if c.CertificateAuthority && len(c.Signs) != 0 && len(c.Deployments) != 0 {
-				if signing == nil || signing.VersionCreatedAt.Before(*c.VersionCreatedAt) {
-					signing = c
-				}
+			if len(c.Signs) != 0 && !c.Transitional {
+				signing := true
+				c.Signing = &signing
+				break
 			}
 		}
-		if signing != nil {
-			*signing.Signing = true
-		}
-		latest.Latest = true
 	})
 
 	for _, variable := range variables {

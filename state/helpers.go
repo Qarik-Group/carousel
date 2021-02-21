@@ -49,3 +49,15 @@ func (s *state) getCredential(id string) (*Credential, bool) {
 	}
 	return nil, false
 }
+
+func (s *state) eachCredential(fn func(*Credential)) {
+	s.credentials.Each(func(_, v interface{}) {
+		fn(v.(*Credential))
+	})
+}
+
+func (s *state) eachDeployment(fn func(*Deployment)) {
+	s.deployments.Each(func(_, v interface{}) {
+		fn(v.(*Deployment))
+	})
+}
