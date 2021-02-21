@@ -39,6 +39,7 @@ func (c *Credential) MarshalJSON() ([]byte, error) {
 		updateMode = c.Path.VariableDefinition.UpdateMode
 	}
 
+	c.RawValue = nil // don't leak raw value
 	type Alias Credential
 	return json.Marshal(&struct {
 		*Alias

@@ -1,6 +1,6 @@
 package state
 
-func (s *state) Credentials(filters ...filter) []*Credential {
+func (s *state) Credentials(filters ...Filter) []*Credential {
 	certs := s.credentials.Select(func(_, v interface{}) bool {
 		for _, fn := range filters {
 			if !fn(v.(*Credential)) {

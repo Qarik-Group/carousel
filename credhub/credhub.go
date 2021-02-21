@@ -82,11 +82,10 @@ func (ch *credhub) UpdateTransitional(c *Credential) error {
 func (ch *credhub) getAllVersions(path string) ([]*Credential, error) {
 	resp, err := ch.client.Request(http.MethodGet, "/api/v1/data",
 		url.Values{"name": []string{path}}, nil, true)
-	defer resp.Body.Close()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed request got: %s", err)
 	}
+	defer resp.Body.Close()
 
 	result := struct {
 		Data []*Credential `json:"data"`

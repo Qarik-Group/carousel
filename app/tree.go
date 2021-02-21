@@ -19,7 +19,7 @@ func (a *Application) viewTree() *tview.TreeView {
 func (a *Application) renderTree() {
 	root := tview.NewTreeNode("∎")
 
-	for _, credType := range credhub.CredentialTypes {
+	for _, credType := range credhub.CredentialTypeValues() {
 		credentials := a.state.Credentials(
 			state.TypeFilter(credType),
 			state.SelfSignedFilter(),
@@ -29,7 +29,7 @@ func (a *Application) renderTree() {
 			continue
 		}
 
-		typeNode := tview.NewTreeNode(string(credType)).Collapse()
+		typeNode := tview.NewTreeNode(credType.String()).Collapse()
 		root.AddChild(typeNode)
 
 		for _, credential := range credentials {

@@ -4,28 +4,40 @@ import (
 	"github.com/starkandwayne/carousel/credhub"
 )
 
-type filter func(*Credential) bool
+type Filter func(*Credential) bool
 
-func SelfSignedFilter() filter {
+func SelfSignedFilter() Filter {
 	return func(c *Credential) bool {
 		return c.SignedBy == nil
 	}
 }
 
-func LatestFilter() filter {
+func LatestFilter() Filter {
 	return func(c *Credential) bool {
 		return c.Latest
 	}
 }
 
-func TypeFilter(types ...credhub.CredentialType) filter {
+func TypeFilter(types ...credhub.CredentialType) Filter {
 	return func(c *Credential) bool {
-		match := false
 		for _, t := range types {
 			if c.Type == t {
-				match = true
+				return true
 			}
 		}
-		return match
+		return false
+	}
+}
+
+func DeploymentFilter(deployments ...string) Filter {
+	return func(c *Credential) bool {
+		for _, name := range deployments {
+			for _, d := range c.Deployments {
+				if d.Name == name {
+					return true
+				}
+			}
+		}
+		return false
 	}
 }

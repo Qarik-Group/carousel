@@ -7,15 +7,27 @@ import (
 	"time"
 )
 
-type CredentialType string
+//
+//go:generate go run github.com/alvaroloes/enumer -type=CredentialType -json -transform=snake
+
+type CredentialType int
 
 const (
-	Certificate, SSH, RSA, Password, User, Value, JSON CredentialType = "certificate",
-		"ssh", "rsa", "password", "user", "value", "json"
+	Certificate CredentialType = iota
+	SSH
+	RSA
+	Password
+	User
+	Value
+	JSON
 )
 
-var CredentialTypes = []CredentialType{
-	Certificate, SSH, RSA, Password, User, Value, JSON,
+func CredentialTypeStringValues() []string {
+	out := make([]string, 0)
+	for _, c := range CredentialTypeValues() {
+		out = append(out, c.String())
+	}
+	return out
 }
 
 type Credential struct {

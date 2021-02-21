@@ -9,7 +9,7 @@ import (
 
 type State interface {
 	Update([]*credhub.Credential, []*bosh.Variable) error
-	Credentials(...filter) []*Credential
+	Credentials(...Filter) []*Credential
 }
 
 func NewState() State {
