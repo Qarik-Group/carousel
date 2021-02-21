@@ -8,7 +8,8 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"github.com/starkandwayne/carousel/store"
+	"github.com/starkandwayne/carousel/credhub"
+	"github.com/starkandwayne/carousel/state"
 	"gopkg.in/yaml.v2"
 
 	"github.com/grantae/certinfo"
@@ -24,7 +25,7 @@ func (a *Application) actionShowDetails(ref interface{}) {
 	a.layout.details.Clear().AddItem(a.renderDetailsFor(ref), 0, 1, false)
 }
 
-func (a *Application) actionToggleTransitional(cred *store.Credential) {
+func (a *Application) actionToggleTransitional(cred *state.Credential) {
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Set transitional=%s for %s@%s",
 			strconv.FormatBool(!cred.Transitional),
@@ -37,7 +38,7 @@ func (a *Application) actionToggleTransitional(cred *store.Credential) {
 				panic(err)
 			}
 			a.statusModal("Refreshing State...")
-			err = a.store.Refresh()
+			a.refresh()
 			if err != nil {
 				panic(err)
 			}
@@ -53,16 +54,16 @@ func (a *Application) actionToggleTransitional(cred *store.Credential) {
 
 func (a *Application) renderDetailsFor(ref interface{}) tview.Primitive {
 	switch v := ref.(type) {
-	case *store.Path:
+	case *state.Path:
 		return a.renderPathDetail(v)
-	case *store.Credential:
+	case *state.Credential:
 		return a.renderCredentialDetail(v)
 	default:
 		return a.renderWelcome()
 	}
 }
 
-func (a *Application) renderPathDetail(p *store.Path) tview.Primitive {
+func (a *Application) renderPathDetail(p *state.Path) tview.Primitive {
 	t := tview.NewTable()
 	t.SetBorder(true)
 	t.SetTitle("Credhub & BOSH")
@@ -90,31 +91,47 @@ func (a *Application) renderPathDetail(p *store.Path) tview.Primitive {
 		AddItem(info, 0, 1, true)
 }
 
-func (a *Application) renderCredentialDetail(cred *store.Credential) tview.Primitive {
+func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primitive {
 	t := tview.NewTable()
 	t.SetBorder(true)
 	t.SetTitle("Credhub & BOSH")
 
 	addSimpleRow(t, "ID", cred.ID)
-	addSimpleRow(t, "Expiry", fmt.Sprintf("%s (%s)",
-		cred.ExpiryDate.Format(time.RFC3339),
-		humanize.RelTime(*cred.ExpiryDate, time.Now(), "ago", "from now")))
-	addSimpleRow(t, "Transitional", strconv.FormatBool(cred.Transitional))
-	addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cred.CertificateAuthority))
-	addSimpleRow(t, "Self Signed", strconv.FormatBool(cred.SelfSigned))
-
+	addSimpleRow(t, "Created At", fmt.Sprintf("%s (%s)",
+		cred.VersionCreatedAt.Format(time.RFC3339),
+		humanize.RelTime(*cred.VersionCreatedAt, time.Now(), "ago", "from now")))
 	addSimpleRow(t, "Deployments", renderDeployments(cred.Deployments))
+	addSimpleRow(t, "Latest", strconv.FormatBool(cred.Latest))
 
-	i, err := certinfo.CertificateText(cred.Certificate)
-	if err != nil {
-		panic(err)
+	var info *tview.TextView
+	detailRows := 4 + 2 // 2 for top and bottom border
+
+	switch cred.Type {
+	case credhub.Certificate:
+		addSimpleRow(t, "Expiry", fmt.Sprintf("%s (%s)",
+			cred.ExpiryDate.Format(time.RFC3339),
+			humanize.RelTime(*cred.ExpiryDate, time.Now(), "ago", "from now")))
+		addSimpleRow(t, "Transitional", strconv.FormatBool(cred.Transitional))
+		addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cred.CertificateAuthority))
+		addSimpleRow(t, "Self Signed", strconv.FormatBool(cred.SelfSigned))
+
+		detailRows = detailRows + 4
+
+		i, err := certinfo.CertificateText(cred.Certificate)
+		if err != nil {
+			panic(err)
+		}
+
+		info = tview.NewTextView().SetText(i).
+			SetTextColor(tcell.Color102)
+		info.SetBorder(true)
+		info.SetTitle("Raw Certificate")
+	default:
+		info = tview.NewTextView().SetText("TODO").
+			SetTextColor(tcell.Color102)
+		info.SetBorder(true)
+		info.SetTitle("Info")
 	}
-
-	info := tview.NewTextView().SetText(i).
-		SetTextColor(tcell.Color102)
-
-	info.SetBorder(true)
-	info.SetTitle("Raw Certificate")
 
 	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(t))
 	t.SetInputCapture(a.nextFocusInputCaptureHandler(info))
@@ -122,12 +139,12 @@ func (a *Application) renderCredentialDetail(cred *store.Credential) tview.Primi
 
 	return tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(t, 8, 1, false).
+		AddItem(t, detailRows, 1, false).
 		AddItem(a.renderCredentialActions(cred), 1, 1, false).
 		AddItem(info, 0, 1, true)
 }
 
-func (a *Application) renderCredentialActions(cred *store.Credential) tview.Primitive {
+func (a *Application) renderCredentialActions(cred *state.Credential) tview.Primitive {
 	actions := []string{
 		"Toggle Transitional",
 		"Delete",
@@ -148,7 +165,7 @@ func (a *Application) renderCredentialActions(cred *store.Credential) tview.Prim
 		SetText(" " + strings.Join(out, "  "))
 }
 
-func (a *Application) renderPathActions(p *store.Path) tview.Primitive {
+func (a *Application) renderPathActions(p *state.Path) tview.Primitive {
 	actions := []string{
 		"Regenerate",
 		"Delete",
@@ -186,7 +203,7 @@ func addSimpleRow(t *tview.Table, lbl, val string) {
 	t.SetCellSimple(row, 1, val)
 }
 
-func renderDeployments(deployments []*store.Deployment) string {
+func renderDeployments(deployments []*state.Deployment) string {
 	tmp := make([]string, 0)
 	for _, d := range deployments {
 		tmp = append(tmp, d.Name)

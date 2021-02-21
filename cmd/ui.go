@@ -33,13 +33,9 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
+		refresh()
 
-		err := store.Refresh()
-		if err != nil {
-			logger.Fatalf("failed to load data: %s", err)
-		}
-
-		app := app.NewApplication(store, credhub).Init()
+		app := app.NewApplication(state, credhub, refresh).Init()
 
 		if err := app.Run(); err != nil {
 			logger.Fatalf("the ui encountered an error: %s", err)

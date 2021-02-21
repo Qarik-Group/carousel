@@ -14,6 +14,10 @@ const (
 		"ssh", "rsa", "password", "user", "value", "json"
 )
 
+var CredentialTypes = []CredentialType{
+	Certificate, SSH, RSA, Password, User, Value, JSON,
+}
+
 type Credential struct {
 	ID                   string          `json:"id"`
 	Metadata             Metadata        `json:"metadata,omitempty"`

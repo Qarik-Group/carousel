@@ -1,4 +1,4 @@
-package store_test
+package cmd_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestStore(t *testing.T) {
+func TestCmd(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Store Suite")
+	RunSpecs(t, "Cmd Suite")
 }

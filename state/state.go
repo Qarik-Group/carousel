@@ -7,11 +7,9 @@ import (
 	"github.com/starkandwayne/carousel/credhub"
 )
 
-type Filter func(*Credential) bool
-
 type State interface {
 	Update([]*credhub.Credential, []*bosh.Variable) error
-	Credentials(...Filter) []*Credential
+	Credentials(...filter) []*Credential
 }
 
 func NewState() State {

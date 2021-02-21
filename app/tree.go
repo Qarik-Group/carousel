@@ -6,7 +6,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/starkandwayne/carousel/store"
+	"github.com/starkandwayne/carousel/credhub"
+	"github.com/starkandwayne/carousel/state"
 )
 
 const treePanel = "TreePanel"
@@ -17,13 +18,24 @@ func (a *Application) viewTree() *tview.TreeView {
 
 func (a *Application) renderTree() {
 	root := tview.NewTreeNode("∎")
-	a.store.EachPath(func(path *store.Path) {
-		// only interested in top level certVersions
-		if len(path.Versions) != 0 && path.Versions[0].SignedBy != nil {
-			return
+
+	for _, credType := range credhub.CredentialTypes {
+		credentials := a.state.Credentials(
+			state.TypeFilter(credType),
+			state.SelfSignedFilter(),
+			state.LatestFilter())
+
+		if len(credentials) == 0 {
+			continue
 		}
-		root.SetChildren(append(root.GetChildren(), addToTree(path.Versions)...))
-	})
+
+		typeNode := tview.NewTreeNode(string(credType)).Collapse()
+		root.AddChild(typeNode)
+
+		for _, credential := range credentials {
+			typeNode.SetChildren(append(typeNode.GetChildren(), addToTree(credential.Path.Versions)...))
+		}
+	}
 
 	var currentNode *tview.TreeNode
 
@@ -37,6 +49,7 @@ func (a *Application) renderTree() {
 		}
 		if refToID(node.GetReference()) == a.selectedID {
 			currentNode = node
+			root.ExpandAll()
 			a.actionShowDetails(currentNode.GetReference())
 			return false
 		}
@@ -57,16 +70,16 @@ func (a *Application) renderTree() {
 
 func refToID(ref interface{}) string {
 	switch v := ref.(type) {
-	case *store.Credential:
+	case *state.Credential:
 		return v.ID
-	case *store.Path:
+	case *state.Path:
 		return v.Name
 	default:
 		return ""
 	}
 }
 
-func addToTree(creds []*store.Credential) []*tview.TreeNode {
+func addToTree(creds []*state.Credential) []*tview.TreeNode {
 	out := make([]*tview.TreeNode, 0)
 	for _, cred := range creds {
 		pathNode := tview.NewTreeNode(cred.Path.Name).
@@ -80,12 +93,12 @@ func addToTree(creds []*store.Credential) []*tview.TreeNode {
 			}
 		}
 
-		lbl := fmt.Sprintf("%s (%s)", cred.ID, cred.Status())
+		lbl := fmt.Sprintf("%s (%s)", cred.ID, toStatus(cred))
 		if cred.Transitional {
 			lbl = lbl + " (transitional)"
 		}
 		credNode := tview.NewTreeNode(lbl).SetReference(cred)
-		switch cred.Status() {
+		switch toStatus(cred) {
 		case "unused":
 			credNode.SetColor(tcell.Color102)
 		case "notice":
