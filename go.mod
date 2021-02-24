@@ -26,5 +26,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect
+	github.com/vito/go-interact v1.0.0
 	gopkg.in/yaml.v2 v2.4.0
 )

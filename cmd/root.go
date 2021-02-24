@@ -41,12 +41,13 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
+var nonInteractive bool
+
 func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.carousel.yaml)")
+	rootCmd.PersistentFlags().BoolVarP(&nonInteractive, "non-interactive", "n", false, "Don't ask for user input")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

@@ -11,7 +11,11 @@ type credentialFilters struct {
 	types         []string
 	expiresWithin string
 	all           bool
+	latest        bool
 	signing       bool
+	signedBy      string
+	ca            bool
+	leaf          bool
 }
 
 var filters = credentialFilters{
@@ -20,6 +24,7 @@ var filters = credentialFilters{
 	types:         make([]string, 0),
 	all:           false,
 	signing:       false,
+	signedBy:      "",
 }
 
 func (f credentialFilters) Filters() []Filter {
@@ -63,4 +68,14 @@ func addFilterFlags(set *pflag.FlagSet) {
 		"also show unused credential versions")
 	set.BoolVar(&filters.signing, "signing", false,
 		"only show Certificates used to sign")
+}
+
+func addExpiresWithinFlag(set *pflag.FlagSet) {
+	set.StringVar(&filters.expiresWithin, "expires-within", "",
+		"filter certificates by expiry window. Valid units are d for days, w for weeks, m for months, and y for years.")
+}
+
+func addSignedByFlag(set *pflag.FlagSet) {
+	set.StringVar(&filters.signedBy, "sign-by", "",
+		"filter certificates signed by a specific CA.")
 }
