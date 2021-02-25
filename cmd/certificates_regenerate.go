@@ -59,9 +59,19 @@ By default, certificates that have been manually set in CredHub are not regenera
 		askForConfirmation()
 
 		for _, cred := range state.Credentials(filters.Filters()...) {
-			credhub.ReGenerate(cred.Credential, regenerateForceFlag)
+			if regenerateForceFlag || cred.Generated {
+				cmd.Printf("- %s", cred.Name)
+				err := credhub.ReGenerate(cred.Credential)
+				if err != nil {
+					cmd.Printf(" got error: %s", cred.Name)
+					os.Exit(1)
+				}
+				cmd.Print(" done\n")
+			} else {
+				cmd.Println("skipping: %s, since it was not genearted by")
+			}
 		}
-		cmd.Println("Done")
+		cmd.Println("Finished")
 	},
 }
 

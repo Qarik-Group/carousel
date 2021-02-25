@@ -12,7 +12,7 @@ import (
 
 type CredHub interface {
 	FindAll() ([]*Credential, error)
-	ReGenerate(cred *Credential, force bool) error
+	ReGenerate(cred *Credential) error
 	UpdateTransitional(*Credential) error
 }
 
@@ -56,8 +56,9 @@ func (ch *credhub) FindAll() ([]*Credential, error) {
 	return ch.getAllVersionsForAllPaths(keys)
 }
 
-func (ch *credhub) ReGenerate(*Credential, bool) error {
-	return nil
+func (ch *credhub) ReGenerate(c *Credential) error {
+	_, err := ch.client.Regenerate(c.Name)
+	return err
 }
 
 func (ch *credhub) UpdateTransitional(c *Credential) error {

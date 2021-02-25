@@ -45,4 +45,6 @@ var listCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(listCmd)
 	addFilterFlags(listCmd.Flags())
+	addNameFlag(listCmd.Flags())
+	addDeploymentFlag(listCmd.Flags())
 }

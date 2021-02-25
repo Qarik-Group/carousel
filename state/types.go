@@ -59,7 +59,7 @@ func (c Credentials) Len() int {
 }
 
 func (c Credentials) Less(i, j int) bool {
-	return c[i].VersionCreatedAt.Before(*c[j].VersionCreatedAt)
+	return c[i].VersionCreatedAt.After(*c[j].VersionCreatedAt)
 }
 
 func (c Credentials) Swap(i, j int) {
