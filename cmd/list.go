@@ -27,8 +27,8 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Display a list of credentials",
 	Long: `List CredHub credentials augmented with information from the BOSH director:
-* update_mode: looked up from runtime configs and deployment manifest 'variables:' sections
-* deployments: list of deployment names which use this version of the credential`,
+update_mode: looked up from runtime configs and deployment manifest 'variables:' sections
+deployments: list of deployment names which use this version of the credential`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
 		refresh()
@@ -44,7 +44,7 @@ var listCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(listCmd)
-	addFilterFlags(listCmd.Flags())
+	addTypesFlag(listCmd.Flags())
 	addNameFlag(listCmd.Flags())
 	addDeploymentFlag(listCmd.Flags())
 }

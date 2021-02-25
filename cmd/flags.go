@@ -31,15 +31,6 @@ func (f credentialFilters) Filters() []Filter {
 	if f.name != "" {
 		out = append(out, NameFilter(f.name))
 	}
-	if f.expiresWithin != "" {
-		ew, err := tparse.AddDuration(time.Now(), "+"+f.expiresWithin)
-		if err != nil {
-			logger.Fatalf("failed to parse duration: %s, got: %s",
-				f.expiresWithin, err)
-		}
-		out = append(out, ExpiresBeforeFilter(ew))
-
-	}
 	if len(f.types) != 0 {
 		types := make([]ccredhub.CredentialType, 0)
 		for _, t := range f.types {
@@ -51,11 +42,23 @@ func (f credentialFilters) Filters() []Filter {
 		}
 		out = append(out, TypeFilter(types...))
 	}
+	if f.expiresWithin != "" {
+		ew, err := tparse.AddDuration(time.Now(), "+"+f.expiresWithin)
+		if err != nil {
+			logger.Fatalf("failed to parse duration: %s, got: %s",
+				f.expiresWithin, err)
+		}
+		out = append(out, ExpiresBeforeFilter(ew))
+
+	}
 	if f.latest {
 		out = append(out, LatestFilter())
 	}
 	if f.signing {
 		out = append(out, SigningFilter())
+	}
+	if f.signedBy != "" {
+		out = append(out, SignedByFilter(f.signedBy))
 	}
 	if f.ca {
 		out = append(out, CertificateAuthorityFilter(true))
@@ -69,11 +72,9 @@ func (f credentialFilters) Filters() []Filter {
 	return out
 }
 
-func addFilterFlags(set *pflag.FlagSet) {
+func addTypesFlag(set *pflag.FlagSet) {
 	set.StringSliceVarP(&filters.types, "types", "t", ccredhub.CredentialTypeStringValues(),
 		"filter by credential type (comma sperated)")
-	set.BoolVar(&filters.signing, "signing", false,
-		"only show Certificates used to sign")
 }
 
 func addDeploymentFlag(set *pflag.FlagSet) {
@@ -94,6 +95,6 @@ func addExpiresWithinFlag(set *pflag.FlagSet) {
 }
 
 func addSignedByFlag(set *pflag.FlagSet) {
-	set.StringVar(&filters.signedBy, "sign-by", "",
+	set.StringVar(&filters.signedBy, "signed-by", "",
 		"filter certificates signed by a specific CA.")
 }

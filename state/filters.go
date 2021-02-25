@@ -95,3 +95,9 @@ func ExpiresBeforeFilter(t time.Time) Filter {
 		return c.ExpiryDate != nil && c.ExpiryDate.Before(t)
 	}
 }
+
+func SignedByFilter(name string) Filter {
+	return func(c *Credential) bool {
+		return c.SignedBy != nil && c.SignedBy.Name == name
+	}
+}
