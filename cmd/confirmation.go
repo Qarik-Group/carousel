@@ -5,6 +5,10 @@ import (
 )
 
 func askForConfirmation() {
+	if nonInteractive {
+		return
+	}
+
 	falseByDefault := false
 
 	err := interact.NewInteraction("Continue?").Resolve(&falseByDefault)

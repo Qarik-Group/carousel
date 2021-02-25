@@ -1,6 +1,8 @@
 package state
 
 import (
+	"time"
+
 	"github.com/starkandwayne/carousel/credhub"
 )
 
@@ -48,10 +50,7 @@ func LatestFilter() Filter {
 
 func SigningFilter() Filter {
 	return func(c *Credential) bool {
-		if c.Signing != nil && *c.Signing {
-			return true
-		}
-		return false
+		return c.Signing != nil && *c.Signing
 	}
 }
 
@@ -64,23 +63,35 @@ func TransitionalFilter() Filter {
 func TypeFilter(types ...credhub.CredentialType) Filter {
 	return func(c *Credential) bool {
 		for _, t := range types {
-			if c.Type == t {
-				return true
-			}
+			return c.Type == t
 		}
 		return false
 	}
 }
 
-func DeploymentFilter(deployments ...string) Filter {
+func DeploymentFilter(deployment string) Filter {
 	return func(c *Credential) bool {
-		for _, name := range deployments {
-			for _, d := range c.Deployments {
-				if d.Name == name {
-					return true
-				}
-			}
+		for _, d := range c.Deployments {
+			return d.Name == deployment
 		}
 		return false
+	}
+}
+
+func NameFilter(name string) Filter {
+	return func(c *Credential) bool {
+		return c.Name == name
+	}
+}
+
+func CertificateAuthorityFilter(expected bool) Filter {
+	return func(c *Credential) bool {
+		return c.CertificateAuthority == expected
+	}
+}
+
+func ExpiresBeforeFilter(t time.Time) Filter {
+	return func(c *Credential) bool {
+		return c.ExpiryDate != nil && c.ExpiryDate.Before(t)
 	}
 }

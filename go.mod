@@ -16,6 +16,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.1.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/karrick/tparse v2.4.2+incompatible
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.14.2

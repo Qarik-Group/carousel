@@ -16,6 +16,8 @@ limitations under the License.
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	ccredhub "github.com/starkandwayne/carousel/credhub"
@@ -45,23 +47,27 @@ By default, certificates that have been manually set in CredHub are not regenera
 
 		credentials := state.Credentials(filters.Filters()...)
 
-		if !nonInteractive {
-			cmd.Println("Regenerating Certificates:")
-			for _, cred := range credentials {
-				cmd.Printf("- %s\n", cred.Name)
-			}
-
-			askForConfirmation()
+		if len(credentials) == 0 {
+			cmd.Println("No Certificates match criteria, nothing to do")
+			os.Exit(0)
 		}
+
+		cmd.Println("Regenerating Certificates:")
+		for _, cred := range credentials {
+			cmd.Printf("- %s\n", cred.Name)
+		}
+		askForConfirmation()
 
 		for _, cred := range state.Credentials(filters.Filters()...) {
 			credhub.ReGenerate(cred.Credential, regenerateForceFlag)
 		}
-
+		cmd.Println("Done")
 	},
 }
 
 func init() {
+	addDeploymentFlag(regenerateCmd.Flags())
+	addNameFlag(regenerateCmd.Flags())
 	addExpiresWithinFlag(regenerateCmd.Flags())
 	addSignedByFlag(regenerateCmd.Flags())
 
