@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	ccredhub "github.com/starkandwayne/carousel/credhub"
 )
@@ -69,9 +70,9 @@ var regenerateCmd = &cobra.Command{
 		}
 		askForConfirmation()
 
-		for _, cred := range state.Credentials(filters.Filters()...) {
+		for _, cred := range credentials {
+			cmd.Printf("- %s", cred.Name)
 			if regenerateForceFlag || cred.Generated {
-				cmd.Printf("- %s", cred.Name)
 				err := credhub.ReGenerate(cred.Credential)
 				if err != nil {
 					cmd.Printf(" got error: %s", cred.Name)
@@ -79,7 +80,7 @@ var regenerateCmd = &cobra.Command{
 				}
 				cmd.Print(" done\n")
 			} else {
-				cmd.Println("skipping: %s, since it was not genearted by")
+				cmd.Print(" skipping: since it was not genearted by CredHub\n")
 			}
 		}
 		cmd.Println("Finished")
@@ -87,15 +88,17 @@ var regenerateCmd = &cobra.Command{
 }
 
 func init() {
-	// Common
-	addDeploymentFlag(regenerateCmd.Flags())
-	addNameFlag(regenerateCmd.Flags())
-	regenerateCmd.Flags().BoolVar(&regenerateForceFlag, "force", false,
-		"Regenerate both CredHub-generated and manually set credentials.")
+	addCommonFlags := func(f *pflag.FlagSet) {
+		addDeploymentFlag(f)
+		addNameFlag(f)
+		f.BoolVar(&regenerateForceFlag, "force", false,
+			"Regenerate both CredHub-generated and manually set credentials.")
+	}
 
 	// SSH, RSA, Users, Passwords
 	var defaultRegenerateCmd = *regenerateCmd
-	addOlderThanFlag(defaultRegenerateCmd.LocalFlags())
+	addCommonFlags(defaultRegenerateCmd.Flags())
+	addOlderThanFlag(defaultRegenerateCmd.Flags())
 
 	var sshKeyPairsRegenerateCmd = defaultRegenerateCmd
 	sshKeyPairsCmd.AddCommand(&sshKeyPairsRegenerateCmd)
@@ -111,8 +114,9 @@ func init() {
 
 	// Certificates
 	var certificatesRegenerateCmd = *regenerateCmd
-	addExpiresWithinFlag(certificatesRegenerateCmd.LocalFlags())
-	addSignedByFlag(certificatesRegenerateCmd.LocalFlags())
+	addCommonFlags(certificatesRegenerateCmd.Flags())
+	addExpiresWithinFlag(certificatesRegenerateCmd.Flags())
+	addSignedByFlag(certificatesRegenerateCmd.Flags())
 
 	var caCertificatesRegenerateCmd = certificatesRegenerateCmd
 	caCertificatesCmd.AddCommand(&caCertificatesRegenerateCmd)
