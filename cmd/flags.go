@@ -14,6 +14,7 @@ type credentialFilters struct {
 	name          string
 	types         []string
 	expiresWithin string
+	olderThan     string
 	latest        bool
 	signing       bool
 	signedBy      string
@@ -49,6 +50,15 @@ func (f credentialFilters) Filters() []Filter {
 				f.expiresWithin, err)
 		}
 		out = append(out, ExpiresBeforeFilter(ew))
+
+	}
+	if f.olderThan != "" {
+		ot, err := tparse.AddDuration(time.Now(), "-"+f.olderThan)
+		if err != nil {
+			logger.Fatalf("failed to parse duration: %s, got: %s",
+				f.expiresWithin, err)
+		}
+		out = append(out, OlderThanFilter(ot))
 
 	}
 	if f.latest {
@@ -91,10 +101,15 @@ func addNameFlag(set *pflag.FlagSet) {
 
 func addExpiresWithinFlag(set *pflag.FlagSet) {
 	set.StringVar(&filters.expiresWithin, "expires-within", "",
-		"filter certificates by expiry window. Valid units are d for days, w for weeks, m for months, and y for years.")
+		"filter certificates by expiry window (suffixes: d day, w week, y year)")
 }
 
 func addSignedByFlag(set *pflag.FlagSet) {
 	set.StringVar(&filters.signedBy, "signed-by", "",
-		"filter certificates signed by a specific CA.")
+		"filter certificates signed by a specific CA")
+}
+
+func addOlderThanFlag(set *pflag.FlagSet) {
+	set.StringVar(&filters.olderThan, "older-than", "",
+		"filter credentials by age (suffixes: d day, w week, y year)")
 }

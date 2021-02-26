@@ -96,6 +96,12 @@ func ExpiresBeforeFilter(t time.Time) Filter {
 	}
 }
 
+func OlderThanFilter(t time.Time) Filter {
+	return func(c *Credential) bool {
+		return c.VersionCreatedAt.Before(t)
+	}
+}
+
 func SignedByFilter(name string) Filter {
 	return func(c *Credential) bool {
 		return c.SignedBy != nil && c.SignedBy.Name == name

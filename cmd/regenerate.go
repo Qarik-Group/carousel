@@ -28,31 +28,42 @@ var regenerateForceFlag bool
 // regenerateCmd represents the regenerate command
 var regenerateCmd = &cobra.Command{
 	Use:   "regenerate",
-	Short: "Regenerate certificates",
-	Long: `Regenerates CredHub-generated certificates. 
-By default, certificates that have been manually set in CredHub are not regenerated.`,
+	Short: "Regenerate credentials",
+	Long:  `Regenerates CredHub-generated credentials`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
 		refresh()
 
 		filters.latest = true
-		filters.types = []string{ccredhub.Certificate.String()}
+		var typeSingular string
 
 		switch cmd.Parent() {
 		case caCertificatesCmd:
 			filters.ca = true
+			typeSingular = ccredhub.Certificate.String()
 		case leafCertificatesCmd:
 			filters.leaf = true
+			typeSingular = ccredhub.Certificate.String()
+		case sshKeyPairsCmd:
+			typeSingular = ccredhub.SSH.String()
+		case rsaKeyPairsCmd:
+			typeSingular = ccredhub.RSA.String()
+		case usersCmd:
+			typeSingular = ccredhub.User.String()
+		case passwordsCmd:
+			typeSingular = ccredhub.Password.String()
 		}
+
+		filters.types = []string{typeSingular}
 
 		credentials := state.Credentials(filters.Filters()...)
 
 		if len(credentials) == 0 {
-			cmd.Println("No Certificates match criteria, nothing to do")
+			cmd.Printf("No %s credentials match criteria, nothing to do\n", typeSingular)
 			os.Exit(0)
 		}
 
-		cmd.Println("Regenerating Certificates:")
+		cmd.Printf("Regenerating %s credentials:\n", typeSingular)
 		for _, cred := range credentials {
 			cmd.Printf("- %s\n", cred.Name)
 		}
@@ -76,17 +87,36 @@ By default, certificates that have been manually set in CredHub are not regenera
 }
 
 func init() {
+	// Common
 	addDeploymentFlag(regenerateCmd.Flags())
 	addNameFlag(regenerateCmd.Flags())
-	addExpiresWithinFlag(regenerateCmd.Flags())
-	addSignedByFlag(regenerateCmd.Flags())
-
 	regenerateCmd.Flags().BoolVar(&regenerateForceFlag, "force", false,
-		"Regenerate both CredHub-generated and manually set Certificates.")
+		"Regenerate both CredHub-generated and manually set credentials.")
 
-	var caCertificatesRegenerateCmd = *regenerateCmd
-	var leafCertificatesRegenerateCmd = *regenerateCmd
+	// SSH, RSA, Users, Passwords
+	var defaultRegenerateCmd = *regenerateCmd
+	addOlderThanFlag(defaultRegenerateCmd.LocalFlags())
 
+	var sshKeyPairsRegenerateCmd = defaultRegenerateCmd
+	sshKeyPairsCmd.AddCommand(&sshKeyPairsRegenerateCmd)
+
+	var rsaKeyPairsRegenerateCmd = defaultRegenerateCmd
+	rsaKeyPairsCmd.AddCommand(&rsaKeyPairsRegenerateCmd)
+
+	var usersRegenerateCmd = defaultRegenerateCmd
+	usersCmd.AddCommand(&usersRegenerateCmd)
+
+	var passwordsRegenerateCmd = defaultRegenerateCmd
+	passwordsCmd.AddCommand(&passwordsRegenerateCmd)
+
+	// Certificates
+	var certificatesRegenerateCmd = *regenerateCmd
+	addExpiresWithinFlag(certificatesRegenerateCmd.LocalFlags())
+	addSignedByFlag(certificatesRegenerateCmd.LocalFlags())
+
+	var caCertificatesRegenerateCmd = certificatesRegenerateCmd
 	caCertificatesCmd.AddCommand(&caCertificatesRegenerateCmd)
+
+	var leafCertificatesRegenerateCmd = certificatesRegenerateCmd
 	leafCertificatesCmd.AddCommand(&leafCertificatesRegenerateCmd)
 }
