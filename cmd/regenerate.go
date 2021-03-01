@@ -16,12 +16,14 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	ccredhub "github.com/starkandwayne/carousel/credhub"
+	cstate "github.com/starkandwayne/carousel/state"
 )
 
 var regenerateForceFlag bool
@@ -73,9 +75,9 @@ var regenerateCmd = &cobra.Command{
 		for _, cred := range credentials {
 			cmd.Printf("- %s", cred.Name)
 			if regenerateForceFlag || cred.Generated {
-				err := credhub.ReGenerate(cred.Credential)
+				err := rotateCredential(cred)
 				if err != nil {
-					cmd.Printf(" got error: %s", cred.Name)
+					cmd.Printf(" got error: %s\n", err)
 					os.Exit(1)
 				}
 				cmd.Print(" done\n")
@@ -123,4 +125,54 @@ func init() {
 
 	var leafCertificatesRegenerateCmd = certificatesRegenerateCmd
 	leafCertificatesCmd.AddCommand(&leafCertificatesRegenerateCmd)
+}
+
+func rotateCredential(c *cstate.Credential) error {
+	switch c.Credential.Type {
+	case ccredhub.Certificate:
+		if c.Certificate.IsCA {
+			return rotateCa(c)
+		} else {
+			return rotateLeaf(c)
+		}
+
+	default:
+		return credhub.ReGenerate(c.Credential)
+	}
+}
+
+func rotateCa(c *cstate.Credential) error {
+	return credhub.ReGenerate(c.Credential)
+}
+
+func rotateLeaf(c *cstate.Credential) error {
+	latestCA := c.SignedBy.Path.Versions.LatestVersion()
+	if latestCA.Transitional {
+		activeLeafsNotSignedByLatestCA := make(cstate.Credentials, 0)
+		for _, sibling := range c.SignedBy.Signs {
+			for _, activeSiblingVersion := range sibling.Path.Versions.ActiveVersions() {
+				if !activeSiblingVersion.CAs.Includes(latestCA) &&
+					!activeLeafsNotSignedByLatestCA.Includes(activeSiblingVersion) {
+					activeLeafsNotSignedByLatestCA = append(
+						activeLeafsNotSignedByLatestCA,
+						activeSiblingVersion)
+				}
+			}
+		}
+
+		if len(activeLeafsNotSignedByLatestCA) != 0 {
+			outErr := "CA check failed, got following failures:"
+			for _, leaf := range activeLeafsNotSignedByLatestCA {
+				outErr = fmt.Sprintf("%s\n- %s@%s (used by: %s) .ca field did not referenced: %s@%s",
+					outErr, leaf.Path.Name, leaf.ID, leaf.Deployments.String(), latestCA.Path.Name, latestCA.ID)
+			}
+			return fmt.Errorf(outErr)
+		}
+	}
+
+	err := credhub.UpdateTransitional(c.SignedBy.Path.Versions.SigningVersion().Credential)
+	if err != nil {
+		return err
+	}
+	return credhub.ReGenerate(c.Credential)
 }

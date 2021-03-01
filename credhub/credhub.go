@@ -57,8 +57,41 @@ func (ch *credhub) FindAll() ([]*Credential, error) {
 }
 
 func (ch *credhub) ReGenerate(c *Credential) error {
-	_, err := ch.client.Regenerate(c.Name)
-	return err
+	switch c.Type {
+	case Certificate:
+		certMeta, err := ch.client.GetCertificateMetadataByName(c.Name)
+		if err != nil {
+			return fmt.Errorf("failed to get certificate meta for: %s got: %s", c.Name, err)
+		}
+
+		singedByCertMeta, err := ch.client.GetCertificateMetadataByName(certMeta.SignedBy)
+		if err != nil {
+			return fmt.Errorf("failed to get certificate meta for: %s got: %s", certMeta.SignedBy, err)
+		}
+
+		path := fmt.Sprintf("/api/v1/certificates/%s/update_transitional_version", singedByCertMeta.Id)
+		body := map[string]interface{}{"version": nil}
+		resp, err := ch.client.Request(http.MethodPut, path, nil, body, true)
+		if err != nil {
+			return fmt.Errorf("failed request: %s with body: %s got: %s", path, body, err)
+		}
+		defer resp.Body.Close()
+
+		path = fmt.Sprintf("/api/v1/certificates/%s/regenerate", certMeta.Id)
+		body = map[string]interface{}{
+			"set_as_transitional": c.CertificateAuthority,
+		}
+		resp, err = ch.client.Request(http.MethodPost, path, nil, body, true)
+		if err != nil {
+			return fmt.Errorf("failed request: %s with body: %s got: %s", path, body, err)
+		}
+		defer resp.Body.Close()
+
+		return nil
+	default:
+		_, err := ch.client.Regenerate(c.Name)
+		return err
+	}
 }
 
 func (ch *credhub) UpdateTransitional(c *Credential) error {
@@ -73,10 +106,11 @@ func (ch *credhub) UpdateTransitional(c *Credential) error {
 		body["version"] = nil
 	}
 	resp, err := ch.client.Request(http.MethodPut, path, nil, body, true)
-	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed request: %s with body: %s got: %s", path, body, err)
 	}
+	defer resp.Body.Close()
+
 	return nil
 }
 

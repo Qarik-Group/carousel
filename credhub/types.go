@@ -43,7 +43,7 @@ type Credential struct {
 	Transitional         bool            `json:"transitional,omitempty"`
 	RawValue             json.RawMessage `json:"value,omitempty"`
 
-	Ca                   *x509.Certificate      `json:"_"`
+	Ca                   []*x509.Certificate    `json:"_"`
 	Certificate          *x509.Certificate      `json:"_"`
 	PrivateKey           string                 `json:"_"`
 	PublicKey            string                 `json:"_"`
@@ -93,7 +93,7 @@ func (c *Credential) UnmarshalJSON(b []byte) error {
 		if err := json.Unmarshal(c.RawValue, &v); err != nil {
 			return err
 		}
-		ca, err := parseCertificate(v.Ca)
+		ca, err := parseCAs(v.Ca)
 		if err != nil {
 			return err
 		}
@@ -120,6 +120,18 @@ func (c *Credential) UnmarshalJSON(b []byte) error {
 	}
 
 	return nil
+}
+
+func parseCAs(raw string) ([]*x509.Certificate, error) {
+	out := make([]*x509.Certificate, 0)
+	for cb, r := pem.Decode([]byte(raw)); cb != nil; cb, r = pem.Decode([]byte(r)) {
+		cert, err := x509.ParseCertificate(cb.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, cert)
+	}
+	return out, nil
 }
 
 func parseCertificate(raw string) (*x509.Certificate, error) {

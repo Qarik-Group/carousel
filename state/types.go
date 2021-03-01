@@ -2,6 +2,7 @@ package state
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/credhub"
@@ -20,12 +21,13 @@ type Deployment struct {
 
 type Credential struct {
 	*credhub.Credential
-	Deployments []*Deployment `json:"-"`
-	SignedBy    *Credential   `json:"-"`
-	Signs       Credentials   `json:"-"`
-	Latest      bool          `json:"latest"`
-	Signing     *bool         `json:"signing,omitempty"`
-	Path        *Path         `json:"-"`
+	Deployments Deployments `json:"-"`
+	SignedBy    *Credential `json:"-"`
+	Signs       Credentials `json:"-"`
+	CAs         Credentials `json:"-"`
+	Latest      bool        `json:"latest"`
+	Signing     *bool       `json:"signing,omitempty"`
+	Path        *Path       `json:"-"`
 }
 
 func (c *Credential) MarshalJSON() ([]byte, error) {
@@ -54,6 +56,43 @@ func (c *Credential) MarshalJSON() ([]byte, error) {
 
 type Credentials []*Credential
 
+func (c Credentials) LatestVersion() *Credential {
+	for _, cred := range c {
+		if cred.Latest {
+			return cred
+		}
+	}
+	return nil
+}
+
+func (c Credentials) ActiveVersions() Credentials {
+	out := make(Credentials, 0)
+	for _, cred := range c {
+		if len(cred.Deployments) != 0 {
+			out = append(out, cred)
+		}
+	}
+	return out
+}
+
+func (c Credentials) SigningVersion() *Credential {
+	for _, cred := range c {
+		if cred.Signing != nil && *cred.Signing {
+			return cred
+		}
+	}
+	return nil
+}
+
+func (c Credentials) Includes(this *Credential) bool {
+	for _, cred := range c {
+		if cred == this {
+			return true
+		}
+	}
+	return false
+}
+
 func (c Credentials) Len() int {
 	return len(c)
 }
@@ -64,4 +103,14 @@ func (c Credentials) Less(i, j int) bool {
 
 func (c Credentials) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
+}
+
+type Deployments []*Deployment
+
+func (d Deployments) String() string {
+	tmp := make([]string, 0, len(d))
+	for _, deployment := range d {
+		tmp = append(tmp, deployment.Name)
+	}
+	return strings.Join(tmp, ", ")
 }

@@ -83,7 +83,7 @@ func addToTree(creds []*state.Credential) []*tview.TreeNode {
 	out := make([]*tview.TreeNode, 0)
 	for _, cred := range creds {
 		pathNode := tview.NewTreeNode(cred.Path.Name).
-			SetReference(cred.Path)
+			SetReference(cred.Path).Collapse()
 
 		var exists bool
 		for _, n := range out {

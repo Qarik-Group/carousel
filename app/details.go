@@ -104,7 +104,8 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 	addSimpleRow(t, "Latest", strconv.FormatBool(cred.Latest))
 
 	var info *tview.TextView
-	detailRows := 4 + 2 // 2 for top and bottom border
+	detailRows := 3 + 2 // 2 for top and bottom border
+	detailRows = detailRows + len(cred.Deployments)
 
 	switch cred.Type {
 	case credhub.Certificate:
@@ -114,8 +115,9 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 		addSimpleRow(t, "Transitional", strconv.FormatBool(cred.Transitional))
 		addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cred.CertificateAuthority))
 		addSimpleRow(t, "Self Signed", strconv.FormatBool(cred.SelfSigned))
+		addSimpleRow(t, "Referenced CA's", renderCredentials(cred.CAs))
 
-		detailRows = detailRows + 4
+		detailRows = detailRows + 5
 
 		i, err := certinfo.CertificateText(cred.Certificate)
 		if err != nil {
@@ -207,6 +209,15 @@ func renderDeployments(deployments []*state.Deployment) string {
 	tmp := make([]string, 0)
 	for _, d := range deployments {
 		tmp = append(tmp, d.Name)
+	}
+
+	return strings.Join(tmp, ", ")
+}
+
+func renderCredentials(credentials state.Credentials) string {
+	tmp := make([]string, 0)
+	for _, c := range credentials {
+		tmp = append(tmp, c.ID)
 	}
 
 	return strings.Join(tmp, ", ")
