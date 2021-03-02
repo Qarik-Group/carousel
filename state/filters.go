@@ -25,6 +25,12 @@ func OrFilter(fns ...Filter) Filter {
 	}
 }
 
+func AnyFilter(fn Collector) Filter {
+	return func(c *Credential) bool {
+		return len(Credentials{c}.Collect(fn)) != 0
+	}
+}
+
 func AndFilter(fns ...Filter) Filter {
 	return func(c *Credential) bool {
 		for _, fn := range fns {
@@ -111,5 +117,11 @@ func OlderThanFilter(t time.Time) Filter {
 func SignedByFilter(name string) Filter {
 	return func(c *Credential) bool {
 		return c.SignedBy != nil && c.SignedBy.Name == name
+	}
+}
+
+func References(c *Credential) Filter {
+	return func(c *Credential) bool {
+		return c.References.Includes(c)
 	}
 }

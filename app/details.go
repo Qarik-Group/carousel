@@ -115,9 +115,10 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 		addSimpleRow(t, "Transitional", strconv.FormatBool(cred.Transitional))
 		addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cred.CertificateAuthority))
 		addSimpleRow(t, "Self Signed", strconv.FormatBool(cred.SelfSigned))
+		addSimpleRow(t, "Referenced by leafs", renderCredentials(cred.ReferencedBy))
 		addSimpleRow(t, "Referenced CA's", renderCredentials(cred.References))
 
-		detailRows = detailRows + 5
+		detailRows = detailRows + 6
 
 		i, err := certinfo.CertificateText(cred.Certificate)
 		if err != nil {

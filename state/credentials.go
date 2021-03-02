@@ -5,7 +5,7 @@ import (
 )
 
 func (s *state) Credentials(filters ...Filter) Credentials {
-	certs := s.credentials.Select(func(_, v interface{}) bool {
+	creds := s.credentials.Select(func(_, v interface{}) bool {
 		for _, fn := range filters {
 			if !fn(v.(*Credential)) {
 				return false
@@ -13,43 +13,63 @@ func (s *state) Credentials(filters ...Filter) Credentials {
 		}
 		return true
 	})
-	out := make(Credentials, 0, certs.Size())
-	for _, cert := range certs.Values() {
+	out := make(Credentials, 0, creds.Size())
+	for _, cert := range creds.Values() {
 		out = append(out, cert.(*Credential))
 	}
 	return out
 }
 
-func (c Credentials) LatestVersion() *Credential {
-	for _, cred := range c {
-		if cred.Latest {
-			return cred
+func (creds Credentials) Collect(fn Collector) Credentials {
+	out := make(Credentials, 0)
+	for _, cred := range creds {
+		if c := fn(cred); c != nil {
+			out = append(out, c...)
 		}
 	}
-	return nil
+	return out
 }
 
-func (c Credentials) ActiveVersions() Credentials {
+func (creds Credentials) Select(filters ...Filter) Credentials {
 	out := make(Credentials, 0)
-	for _, cred := range c {
-		if len(cred.Deployments) != 0 {
+
+OUTER:
+	for _, cred := range creds {
+		for _, fn := range filters {
+			if !fn(cred) {
+				continue OUTER
+			}
+		}
+		out = append(out, cred)
+	}
+	return out
+}
+
+func (creds Credentials) Find(filters ...Filter) (cred *Credential, found bool) {
+OUTER:
+	for _, cred := range creds {
+		for _, fn := range filters {
+			if !fn(cred) {
+				continue OUTER
+			}
+		}
+		return cred, true
+	}
+	return nil, false
+}
+
+func (creds Credentials) Unique() Credentials {
+	out := make(Credentials, 0)
+	for _, cred := range creds {
+		if !out.Includes(cred) {
 			out = append(out, cred)
 		}
 	}
 	return out
 }
 
-func (c Credentials) SigningVersion() *Credential {
-	for _, cred := range c {
-		if cred.Signing != nil && *cred.Signing {
-			return cred
-		}
-	}
-	return nil
-}
-
-func (c Credentials) Includes(this *Credential) bool {
-	for _, cred := range c {
+func (ceds Credentials) Includes(this *Credential) bool {
+	for _, cred := range ceds {
 		if cred == this {
 			return true
 		}
@@ -70,4 +90,8 @@ func (creds Credentials) SortByNameAndCreatedAt() {
 		}
 		return creds[i].Name < creds[j].Name
 	})
+}
+
+func (creds Credentials) Any() bool {
+	return len(creds) != 0
 }

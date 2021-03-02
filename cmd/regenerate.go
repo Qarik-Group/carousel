@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -39,6 +38,7 @@ var regenerateCmd = &cobra.Command{
 
 		filters.latest = true
 		var typeSingular string
+		var preRegenerateHook func(*cobra.Command, cstate.Credentials)
 
 		switch cmd.Parent() {
 		case caCertificatesCmd:
@@ -47,6 +47,7 @@ var regenerateCmd = &cobra.Command{
 		case leafCertificatesCmd:
 			filters.leaf = true
 			typeSingular = ccredhub.Certificate.String()
+			preRegenerateHook = preRegenerateLeaf
 		case sshKeyPairsCmd:
 			typeSingular = ccredhub.SSH.String()
 		case rsaKeyPairsCmd:
@@ -72,10 +73,15 @@ var regenerateCmd = &cobra.Command{
 		}
 		askForConfirmation()
 
+		if preRegenerateHook != nil {
+			preRegenerateHook(cmd, credentials)
+		}
+
+		cmd.Printf("\nPerforming credential regeneration:\n")
 		for _, cred := range credentials {
 			cmd.Printf("- %s", cred.Name)
 			if regenerateForceFlag || cred.Generated {
-				err := rotateCredential(cred)
+				err := credhub.ReGenerate(cred.Credential)
 				if err != nil {
 					cmd.Printf(" got error: %s\n", err)
 					os.Exit(1)
@@ -127,52 +133,47 @@ func init() {
 	leafCertificatesCmd.AddCommand(&leafCertificatesRegenerateCmd)
 }
 
-func rotateCredential(c *cstate.Credential) error {
-	switch c.Credential.Type {
-	case ccredhub.Certificate:
-		if c.Certificate.IsCA {
-			return rotateCa(c)
-		} else {
-			return rotateLeaf(c)
-		}
+func preRegenerateLeaf(cmd *cobra.Command, credentials cstate.Credentials) {
+	transitionalCAs := credentials.Collect(
+		cstate.SignedByCollector()).
+		Collect(cstate.SibilingsCollector()).
+		Unique().Select(cstate.TransitionalFilter())
 
-	default:
-		return credhub.ReGenerate(c.Credential)
-	}
-}
+	if transitionalCAs.Any() {
+		logger.Print("\nVerifying all transitional CA's have been deployed:\n")
 
-func rotateCa(c *cstate.Credential) error {
-	return credhub.ReGenerate(c.Credential)
-}
-
-func rotateLeaf(c *cstate.Credential) error {
-	latestCA := c.SignedBy.Path.Versions.LatestVersion()
-	if latestCA.Transitional {
-		activeLeafsNotSignedByLatestCA := make(cstate.Credentials, 0)
-		for _, sibling := range c.SignedBy.Signs {
-			for _, activeSiblingVersion := range sibling.Path.Versions.ActiveVersions() {
-				if !activeSiblingVersion.References.Includes(latestCA) &&
-					!activeLeafsNotSignedByLatestCA.Includes(activeSiblingVersion) {
-					activeLeafsNotSignedByLatestCA = append(
-						activeLeafsNotSignedByLatestCA,
-						activeSiblingVersion)
+		ok := true
+		for _, tca := range transitionalCAs {
+			logger.Printf("- %s   %s\n", tca.ID, tca.Name)
+			for _, leaf := range tca.Path.Versions.
+				Collect(cstate.SignsCollector()).
+				Unique().
+				Select(cstate.ActiveFilter()) {
+				check := "✓"
+				if !leaf.References.Includes(tca) {
+					ok = false
+					check = "×"
 				}
+				logger.Printf("L %s %s %s deployments [%s]\n", check, leaf.ID, leaf.Name, leaf.Deployments.String())
 			}
 		}
-
-		if len(activeLeafsNotSignedByLatestCA) != 0 {
-			outErr := "CA check failed, got following failures:"
-			for _, leaf := range activeLeafsNotSignedByLatestCA {
-				outErr = fmt.Sprintf("%s\n- %s@%s (used by: %s) .ca field did not referenced: %s@%s",
-					outErr, leaf.Path.Name, leaf.ID, leaf.Deployments.String(), latestCA.Path.Name, latestCA.ID)
-			}
-			return fmt.Errorf(outErr)
+		if !ok {
+			logger.Fatal("Failed: not all transitional CA's have been deployed.\nPlease issue a deploy for the deployments marked above")
+		} else {
+			logger.Print("All clear\n\n")
 		}
+
+		logger.Print("Moving transitional CA flag to signing versions\n")
+		for _, signingCA := range transitionalCAs.Collect(cstate.SibilingsCollector()).Select(cstate.SigningFilter()) {
+			cmd.Printf("- %s", signingCA.Name)
+			err := credhub.UpdateTransitional(signingCA.Credential, false)
+			if err != nil {
+				cmd.Printf(" got error: %s\n", err)
+				os.Exit(1)
+			}
+			cmd.Print(" done\n")
+		}
+		cmd.Printf("Finished\n\n")
 	}
 
-	err := credhub.UpdateTransitional(c.SignedBy.Path.Versions.SigningVersion().Credential, false)
-	if err != nil {
-		return err
-	}
-	return credhub.ReGenerate(c.Credential)
 }

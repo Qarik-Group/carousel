@@ -48,6 +48,7 @@ func (f credentialFilters) Filters() []Filter {
 		out = append(out, AndFilter(
 			NotFilter(ActiveFilter()),
 			NotFilter(TransitionalFilter()),
+			NotFilter(AnyFilter(SignsCollector())),
 		))
 	}
 	if f.expiresWithin != "" {
