@@ -170,7 +170,7 @@ func rotateLeaf(c *cstate.Credential) error {
 		}
 	}
 
-	err := credhub.UpdateTransitional(c.SignedBy.Path.Versions.SigningVersion().Credential)
+	err := credhub.UpdateTransitional(c.SignedBy.Path.Versions.SigningVersion().Credential, false)
 	if err != nil {
 		return err
 	}

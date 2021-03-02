@@ -58,6 +58,7 @@ var cleanUpCmd = &cobra.Command{
 		filters.types = []string{typeSingular}
 
 		credentials := state.Credentials(filters.Filters()...)
+		credentials.SortByNameAndCreatedAt()
 
 		if len(credentials) == 0 {
 			cmd.Printf("No %s credentials match criteria, nothing to do\n", typeSingular)
@@ -66,12 +67,12 @@ var cleanUpCmd = &cobra.Command{
 
 		cmd.Printf("Cleaning up %s credentials:\n", typeSingular)
 		for _, cred := range credentials {
-			cmd.Printf("- %s@%s\n", cred.Name, cred.ID)
+			cmd.Printf("- %s %s\n", cred.ID, cred.Name)
 		}
 		askForConfirmation()
 
 		for _, cred := range credentials {
-			cmd.Printf("- %s@%s", cred.Name, cred.ID)
+			cmd.Printf("- %s %s", cred.ID, cred.Name)
 			err := credhub.Delete(cred.Credential)
 			if err != nil {
 				cmd.Printf(" got error: %s\n", err)

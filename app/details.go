@@ -33,7 +33,7 @@ func (a *Application) actionToggleTransitional(cred *state.Credential) {
 	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		if buttonLabel == "Continue" {
 			a.statusModal("Updating Transitional...")
-			err := a.credhub.UpdateTransitional(cred.Credential)
+			err := a.credhub.UpdateTransitional(cred.Credential, cred.Transitional)
 			if err != nil {
 				panic(err)
 			}

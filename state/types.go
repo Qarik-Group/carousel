@@ -31,6 +31,8 @@ type Credential struct {
 	Path         *Path       `json:"-"`
 }
 
+type Credentials []*Credential
+
 func (c *Credential) MarshalJSON() ([]byte, error) {
 	deployments := make([]string, 0)
 	for _, d := range c.Deployments {
@@ -65,57 +67,6 @@ func (c *Credential) Active() bool {
 		}
 	}
 	return false
-}
-
-type Credentials []*Credential
-
-func (c Credentials) LatestVersion() *Credential {
-	for _, cred := range c {
-		if cred.Latest {
-			return cred
-		}
-	}
-	return nil
-}
-
-func (c Credentials) ActiveVersions() Credentials {
-	out := make(Credentials, 0)
-	for _, cred := range c {
-		if len(cred.Deployments) != 0 {
-			out = append(out, cred)
-		}
-	}
-	return out
-}
-
-func (c Credentials) SigningVersion() *Credential {
-	for _, cred := range c {
-		if cred.Signing != nil && *cred.Signing {
-			return cred
-		}
-	}
-	return nil
-}
-
-func (c Credentials) Includes(this *Credential) bool {
-	for _, cred := range c {
-		if cred == this {
-			return true
-		}
-	}
-	return false
-}
-
-func (c Credentials) Len() int {
-	return len(c)
-}
-
-func (c Credentials) Less(i, j int) bool {
-	return c[i].VersionCreatedAt.After(*c[j].VersionCreatedAt)
-}
-
-func (c Credentials) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
 }
 
 type Deployments []*Deployment

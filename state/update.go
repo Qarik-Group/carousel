@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/credhub"
@@ -57,13 +56,13 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 
 	// Sort Credentials
 	s.eachPath(func(p *Path) {
-		sort.Sort(p.Versions)
+		p.Versions.SortByCreatedAt()
 	})
 	s.eachDeployment(func(d *Deployment) {
-		sort.Sort(d.Versions)
+		d.Versions.SortByCreatedAt()
 	})
 	s.eachCredential(func(c *Credential) {
-		sort.Sort(c.Signs)
+		c.Signs.SortByCreatedAt()
 	})
 
 	// Mark last Credential per Path as Latest

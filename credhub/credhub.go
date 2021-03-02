@@ -14,7 +14,7 @@ type CredHub interface {
 	FindAll() ([]*Credential, error)
 	ReGenerate(cred *Credential) error
 	Delete(cred *Credential) error
-	UpdateTransitional(*Credential) error
+	UpdateTransitional(cred *Credential, remove bool) error
 }
 
 func NewCredHub(ch *chcli.CredHub) CredHub {
@@ -120,7 +120,7 @@ func (ch *credhub) ReGenerate(c *Credential) error {
 	}
 }
 
-func (ch *credhub) UpdateTransitional(c *Credential) error {
+func (ch *credhub) UpdateTransitional(c *Credential, remove bool) error {
 	certMeta, err := ch.client.GetCertificateMetadataByName(c.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get certificate meta for: %s got: %s", c.Name, err)
@@ -128,7 +128,7 @@ func (ch *credhub) UpdateTransitional(c *Credential) error {
 
 	path := fmt.Sprintf("/api/v1/certificates/%s/update_transitional_version", certMeta.Id)
 	body := map[string]interface{}{"version": c.ID}
-	if c.Transitional {
+	if remove {
 		body["version"] = nil
 	}
 	resp, err := ch.client.Request(http.MethodPut, path, nil, body, true)
