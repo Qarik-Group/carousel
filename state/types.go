@@ -21,13 +21,14 @@ type Deployment struct {
 
 type Credential struct {
 	*credhub.Credential
-	Deployments Deployments `json:"-"`
-	SignedBy    *Credential `json:"-"`
-	Signs       Credentials `json:"-"`
-	CAs         Credentials `json:"-"`
-	Latest      bool        `json:"latest"`
-	Signing     *bool       `json:"signing,omitempty"`
-	Path        *Path       `json:"-"`
+	Deployments  Deployments `json:"-"`
+	SignedBy     *Credential `json:"-"`
+	ReferencedBy Credentials `json:"-"`
+	References   Credentials `json:"-"`
+	Signs        Credentials `json:"-"`
+	Latest       bool        `json:"latest"`
+	Signing      *bool       `json:"signing,omitempty"`
+	Path         *Path       `json:"-"`
 }
 
 func (c *Credential) MarshalJSON() ([]byte, error) {
@@ -52,6 +53,18 @@ func (c *Credential) MarshalJSON() ([]byte, error) {
 		DeploymentsList: deployments,
 		UpdateMode:      updateMode,
 	})
+}
+
+func (c *Credential) Active() bool {
+	if len(c.Deployments) != 0 {
+		return true
+	}
+	for _, cred := range c.ReferencedBy {
+		if cred.Active() {
+			return true
+		}
+	}
+	return false
 }
 
 type Credentials []*Credential

@@ -14,7 +14,7 @@ func toStatus(c *state.Credential) string {
 	if c.VersionCreatedAt.Sub(time.Now()) > time.Hour*24*365 {
 		status = "notice"
 	}
-	if len(c.Deployments) == 0 {
+	if !c.Active() {
 		status = "unused"
 	}
 	return status

@@ -13,6 +13,7 @@ import (
 type CredHub interface {
 	FindAll() ([]*Credential, error)
 	ReGenerate(cred *Credential) error
+	Delete(cred *Credential) error
 	UpdateTransitional(*Credential) error
 }
 
@@ -54,6 +55,31 @@ func (ch *credhub) FindAll() ([]*Credential, error) {
 	}
 
 	return ch.getAllVersionsForAllPaths(keys)
+}
+
+func (ch *credhub) Delete(c *Credential) error {
+	switch c.Type {
+	case Certificate:
+		certMeta, err := ch.client.GetCertificateMetadataByName(c.Name)
+		if err != nil {
+			return fmt.Errorf("failed to get certificate meta for: %s got: %s", c.Name, err)
+		}
+
+		if len(certMeta.Versions) > 1 {
+			path := fmt.Sprintf("/api/v1/certificates/%s/versions/%s", certMeta.Id, c.ID)
+			resp, err := ch.client.Request(http.MethodDelete, path, nil, nil, true)
+			if err != nil {
+				return fmt.Errorf("failed request: %s got: %s", path, err)
+			}
+			defer resp.Body.Close()
+		} else {
+			return ch.client.Delete(c.Name)
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("Deleting a credential version not supported for type: %s", c.Type.String())
+	}
 }
 
 func (ch *credhub) ReGenerate(c *Credential) error {

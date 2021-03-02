@@ -47,7 +47,8 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 		for _, ca := range cert.Ca {
 			ca, found := s.getCredentialBySubjectKeyId(ca.SubjectKeyId)
 			if found {
-				cert.CAs = append(cert.CAs, ca)
+				cert.References = append(cert.References, ca)
+				ca.ReferencedBy = append(ca.ReferencedBy, cert)
 			} else {
 				return fmt.Errorf("failed to lookup ca Credential with id: %s", cert.ID)
 			}

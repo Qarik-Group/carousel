@@ -8,6 +8,12 @@ import (
 
 type Filter func(*Credential) bool
 
+func NotFilter(fn Filter) Filter {
+	return func(c *Credential) bool {
+		return !fn(c)
+	}
+}
+
 func OrFilter(fns ...Filter) Filter {
 	return func(c *Credential) bool {
 		for _, fn := range fns {
@@ -38,7 +44,7 @@ func SelfSignedFilter() Filter {
 
 func ActiveFilter() Filter {
 	return func(c *Credential) bool {
-		return len(c.Deployments) != 0
+		return c.Active()
 	}
 }
 

@@ -151,7 +151,7 @@ func rotateLeaf(c *cstate.Credential) error {
 		activeLeafsNotSignedByLatestCA := make(cstate.Credentials, 0)
 		for _, sibling := range c.SignedBy.Signs {
 			for _, activeSiblingVersion := range sibling.Path.Versions.ActiveVersions() {
-				if !activeSiblingVersion.CAs.Includes(latestCA) &&
+				if !activeSiblingVersion.References.Includes(latestCA) &&
 					!activeLeafsNotSignedByLatestCA.Includes(activeSiblingVersion) {
 					activeLeafsNotSignedByLatestCA = append(
 						activeLeafsNotSignedByLatestCA,

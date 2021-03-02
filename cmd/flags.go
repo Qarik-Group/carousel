@@ -13,6 +13,7 @@ type credentialFilters struct {
 	deployment    string
 	name          string
 	types         []string
+	unused        bool
 	expiresWithin string
 	olderThan     string
 	latest        bool
@@ -42,6 +43,12 @@ func (f credentialFilters) Filters() []Filter {
 			types = append(types, ct)
 		}
 		out = append(out, TypeFilter(types...))
+	}
+	if f.unused {
+		out = append(out, AndFilter(
+			NotFilter(ActiveFilter()),
+			NotFilter(TransitionalFilter()),
+		))
 	}
 	if f.expiresWithin != "" {
 		ew, err := tparse.AddDuration(time.Now(), "+"+f.expiresWithin)
