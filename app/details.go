@@ -205,11 +205,16 @@ func (a *Application) renderPathActions(p *state.Path) tview.Primitive {
 }
 
 func (a *Application) renderWelcome() tview.Primitive {
-	h := tview.NewBox().SetBorder(true).SetTitle("help")
+	u := tview.NewTable()
+	u.SetBorder(true)
+	u.SetTitle("Usage")
 
-	a.layout.tree.SetInputCapture(a.nextFocusInputCaptureHandler(h))
-	h.SetInputCapture(a.nextFocusInputCaptureHandler(a.layout.tree))
-	return h
+	addSimpleRow(u, "Arrow Up/Down", "navigate the tree / scroll text panel")
+	addSimpleRow(u, "Enter", "expand/collapse tree node")
+	addSimpleRow(u, "Tab", "cycle trough panels")
+	addSimpleRow(u, "Control", "modifier for actions ([yellow]^[white])")
+
+	return u
 }
 
 func addSimpleRow(t *tview.Table, lbl, val string) {
