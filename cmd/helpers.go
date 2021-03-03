@@ -46,7 +46,7 @@ func initialize() {
 	state = NewState()
 }
 
-func refresh() {
+func refresh() error {
 	var (
 		wg          sync.WaitGroup
 		err         error
@@ -76,8 +76,5 @@ func refresh() {
 
 	wg.Wait()
 
-	err = state.Update(credentials, variables)
-	if err != nil {
-		logger.Fatalf("failed to update state got: %s", err)
-	}
+	return state.Update(credentials, variables)
 }

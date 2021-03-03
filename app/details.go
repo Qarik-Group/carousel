@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +40,7 @@ func (a *Application) actionDelete(cred *state.Credential) {
 		cred.Name, cred.ID)
 
 	a.renderModalAction(message, "Deleting...", func() error {
+		a.selectedID = cred.Path.Name
 		return a.credhub.Delete(cred.Credential)
 	})
 }
@@ -52,6 +52,10 @@ func (a *Application) actionRegenerate(cred *state.Credential) {
 	a.renderModalAction(message, "Regenerating...", func() error {
 		return a.credhub.ReGenerate(cred.Credential)
 	})
+}
+
+func (a *Application) actionRefresh() {
+	a.refreshWithStatusModal()
 }
 
 func (a *Application) renderDetailsFor(ref interface{}) tview.Primitive {
@@ -74,7 +78,7 @@ func (a *Application) renderPathDetail(p *state.Path) tview.Primitive {
 
 	variableDef, err := yaml.Marshal(p.VariableDefinition)
 	if err != nil {
-		panic(err)
+		a.fatalf("Failed to marshal bosh variable definition got: %s", err)
 	}
 
 	info := tview.NewTextView().SetText(string(variableDef)).
@@ -124,7 +128,7 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 
 		i, err := certinfo.CertificateText(cred.Certificate)
 		if err != nil {
-			panic(err)
+			a.fatalf("Failed to render certificate to text got: %s", err)
 		}
 
 		info = tview.NewTextView().SetText(i).
@@ -151,6 +155,7 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 
 func (a *Application) renderCredentialActions(cred *state.Credential) tview.Primitive {
 	actions := []string{
+		"Refresh State",
 		"Toggle Transitional",
 		"Delete",
 	}
@@ -160,6 +165,8 @@ func (a *Application) renderCredentialActions(cred *state.Credential) tview.Prim
 		out = append(out, fmt.Sprintf("[yellow]^%s[white] %s",
 			string([]rune(lbl)[0]), lbl))
 	}
+
+	a.keyBindings[tcell.KeyCtrlR] = a.actionRefresh
 
 	a.keyBindings[tcell.KeyCtrlT] = func() {
 		a.actionToggleTransitional(cred)
@@ -176,7 +183,8 @@ func (a *Application) renderCredentialActions(cred *state.Credential) tview.Prim
 
 func (a *Application) renderPathActions(p *state.Path) tview.Primitive {
 	actions := []string{
-		"Regenerate",
+		"Refresh State",
+		"Generate",
 	}
 
 	out := []string{}
@@ -185,7 +193,9 @@ func (a *Application) renderPathActions(p *state.Path) tview.Primitive {
 			string([]rune(lbl)[0]), lbl))
 	}
 
-	a.keyBindings[tcell.KeyCtrlR] = func() {
+	a.keyBindings[tcell.KeyCtrlR] = a.actionRefresh
+
+	a.keyBindings[tcell.KeyCtrlG] = func() {
 		a.actionRegenerate(p.Versions[0])
 	}
 
@@ -227,31 +237,4 @@ func renderCredentials(credentials state.Credentials) string {
 	}
 
 	return strings.Join(tmp, ", ")
-}
-
-func (a *Application) renderModalAction(body, status string, fn func() error) {
-	modal := tview.NewModal().
-		SetText(body).AddButtons([]string{"Continue", "Cancel"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-		if buttonLabel == "Continue" {
-			a.statusModal(status)
-			err := fn()
-			if err != nil {
-				a.Stop()
-				fmt.Printf("Failed got error: %s", err)
-				os.Exit(1)
-			}
-			a.statusModal("Refreshing State...")
-			a.refresh()
-			if err != nil {
-				panic(err)
-			}
-
-			a.renderTree()
-		}
-		a.SetRoot(a.layout.main, true)
-		a.SetFocus(a.layout.tree)
-	})
-
-	a.SetRoot(modal, true)
 }

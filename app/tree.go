@@ -16,7 +16,7 @@ func (a *Application) viewTree() *tview.TreeView {
 	return tview.NewTreeView()
 }
 
-func (a *Application) renderTree() {
+func (a *Application) updateTree() {
 	root := tview.NewTreeNode("∎")
 
 	for _, credType := range credhub.CredentialTypeValues() {

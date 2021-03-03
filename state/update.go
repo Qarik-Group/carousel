@@ -79,8 +79,8 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 		d := s.getOrCreateDeployment(variable.Deployment)
 		credential, found := s.getCredential(variable.ID)
 		if !found {
-			return fmt.Errorf(
-				"credential not found for bosh variable id: %s\nrun bosh deploy for '%s'",
+			return fmt.Errorf(`credential not found for bosh variable id: %s
+run bosh deploy for '%s' so the BOSH director can converge it's variable references`,
 				variable.ID, variable.Deployment)
 		}
 		credential.Deployments = append(credential.Deployments, d)
@@ -88,9 +88,9 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 
 		path, found := s.getPath(variable.Name)
 		if !found {
-			return fmt.Errorf(
-				"path not found for bosh variable id: %s\nrun bosh deploy for '%s'",
-				variable.ID, variable.Deployment)
+			return fmt.Errorf(`path not found for bosh variable name: %s
+run bosh deploy for '%s' so the BOSH director can converge it's variable references`,
+				variable.Name, variable.Deployment)
 		}
 
 		path.VariableDefinition = variable.Definition

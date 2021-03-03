@@ -16,7 +16,7 @@ type Application struct {
 	layout      *Layout
 	keyBindings map[tcell.Key]func()
 	selectedID  string
-	refresh     func()
+	refresh     func() error
 }
 
 type Layout struct {
@@ -25,7 +25,7 @@ type Layout struct {
 	details *tview.Flex
 }
 
-func NewApplication(state state.State, ch credhub.CredHub, refresh func()) *Application {
+func NewApplication(state state.State, ch credhub.CredHub, refresh func() error) *Application {
 	return &Application{
 		Application: tview.NewApplication(),
 		state:       state,
@@ -55,7 +55,7 @@ func (a *Application) Init() *Application {
 	a.SetFocus(a.layout.tree)
 	a.EnableMouse(false)
 
-	a.renderTree()
+	a.updateTree()
 	a.actionShowDetails(nil)
 
 	a.initGlobalKeyInputCaputreHandler()
@@ -82,9 +82,4 @@ func (a *Application) initGlobalKeyInputCaputreHandler() {
 		}
 		return event
 	})
-}
-
-func (a *Application) statusModal(status string) {
-	a.SetRoot(tview.NewModal().SetText(status), true)
-	a.ForceDraw()
 }
