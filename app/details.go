@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -26,30 +27,31 @@ func (a *Application) actionShowDetails(ref interface{}) {
 }
 
 func (a *Application) actionToggleTransitional(cred *state.Credential) {
-	modal := tview.NewModal().
-		SetText(fmt.Sprintf("Set transitional=%s for %s@%s",
-			strconv.FormatBool(!cred.Transitional),
-			cred.Name, cred.ID)).AddButtons([]string{"Continue", "Cancel"})
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-		if buttonLabel == "Continue" {
-			a.statusModal("Updating Transitional...")
-			err := a.credhub.UpdateTransitional(cred.Credential, cred.Transitional)
-			if err != nil {
-				panic(err)
-			}
-			a.statusModal("Refreshing State...")
-			a.refresh()
-			if err != nil {
-				panic(err)
-			}
+	message := fmt.Sprintf(
+		"Set transitional=%s for %s@%s\nWarning manual updates can lead to an inconsitent state",
+		strconv.FormatBool(!cred.Transitional), cred.Name, cred.ID)
 
-			a.renderTree()
-		}
-		a.SetRoot(a.layout.main, true)
-		a.SetFocus(a.layout.tree)
+	a.renderModalAction(message, "Updating Transitional...", func() error {
+		return a.credhub.UpdateTransitional(cred.Credential, cred.Transitional)
 	})
+}
 
-	a.SetRoot(modal, true)
+func (a *Application) actionDelete(cred *state.Credential) {
+	message := fmt.Sprintf("Delete %s@%s\nWarning manual deletion can lead to an inconsitent state",
+		cred.Name, cred.ID)
+
+	a.renderModalAction(message, "Deleting...", func() error {
+		return a.credhub.Delete(cred.Credential)
+	})
+}
+
+func (a *Application) actionRegenerate(cred *state.Credential) {
+	message := fmt.Sprintf("Regenerate %s@%s\nWarning manual regeneration can lead to an inconsitent state",
+		cred.Name, cred.ID)
+
+	a.renderModalAction(message, "Regenerating...", func() error {
+		return a.credhub.ReGenerate(cred.Credential)
+	})
 }
 
 func (a *Application) renderDetailsFor(ref interface{}) tview.Primitive {
@@ -163,6 +165,10 @@ func (a *Application) renderCredentialActions(cred *state.Credential) tview.Prim
 		a.actionToggleTransitional(cred)
 	}
 
+	a.keyBindings[tcell.KeyCtrlD] = func() {
+		a.actionDelete(cred)
+	}
+
 	return tview.NewTextView().
 		SetDynamicColors(true).
 		SetText(" " + strings.Join(out, "  "))
@@ -171,7 +177,6 @@ func (a *Application) renderCredentialActions(cred *state.Credential) tview.Prim
 func (a *Application) renderPathActions(p *state.Path) tview.Primitive {
 	actions := []string{
 		"Regenerate",
-		"Delete",
 	}
 
 	out := []string{}
@@ -180,9 +185,9 @@ func (a *Application) renderPathActions(p *state.Path) tview.Primitive {
 			string([]rune(lbl)[0]), lbl))
 	}
 
-	// a.keyBindings[tcell.KeyCtrlT] = func() {
-	//	a.actionToggleTransitional(cv)
-	// }
+	a.keyBindings[tcell.KeyCtrlR] = func() {
+		a.actionRegenerate(p.Versions[0])
+	}
 
 	return tview.NewTextView().
 		SetDynamicColors(true).
@@ -222,4 +227,31 @@ func renderCredentials(credentials state.Credentials) string {
 	}
 
 	return strings.Join(tmp, ", ")
+}
+
+func (a *Application) renderModalAction(body, status string, fn func() error) {
+	modal := tview.NewModal().
+		SetText(body).AddButtons([]string{"Continue", "Cancel"})
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		if buttonLabel == "Continue" {
+			a.statusModal(status)
+			err := fn()
+			if err != nil {
+				a.Stop()
+				fmt.Printf("Failed got error: %s", err)
+				os.Exit(1)
+			}
+			a.statusModal("Refreshing State...")
+			a.refresh()
+			if err != nil {
+				panic(err)
+			}
+
+			a.renderTree()
+		}
+		a.SetRoot(a.layout.main, true)
+		a.SetFocus(a.layout.tree)
+	})
+
+	a.SetRoot(modal, true)
 }

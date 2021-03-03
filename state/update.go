@@ -40,16 +40,12 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 		if found {
 			ca.Signs = append(ca.Signs, cert)
 			cert.SignedBy = ca
-		} else {
-			return fmt.Errorf("failed to lookup ca Credential with id: %s", cert.ID)
 		}
 		for _, ca := range cert.Ca {
 			ca, found := s.getCredentialBySubjectKeyId(ca.SubjectKeyId)
 			if found {
 				cert.References = append(cert.References, ca)
 				ca.ReferencedBy = append(ca.ReferencedBy, cert)
-			} else {
-				return fmt.Errorf("failed to lookup ca Credential with id: %s", cert.ID)
 			}
 		}
 	}
@@ -83,16 +79,18 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 		d := s.getOrCreateDeployment(variable.Deployment)
 		credential, found := s.getCredential(variable.ID)
 		if !found {
-			return fmt.Errorf("failed to lookup credential for bosh variable with id: %s",
-				variable.ID)
+			return fmt.Errorf(
+				"credential not found for bosh variable id: %s\nrun bosh deploy for '%s'",
+				variable.ID, variable.Deployment)
 		}
 		credential.Deployments = append(credential.Deployments, d)
 		d.Versions = append(d.Versions, credential)
 
 		path, found := s.getPath(variable.Name)
 		if !found {
-			return fmt.Errorf("failed to lookup path for bosh variable with name: %s",
-				variable.Name)
+			return fmt.Errorf(
+				"path not found for bosh variable id: %s\nrun bosh deploy for '%s'",
+				variable.ID, variable.Deployment)
 		}
 
 		path.VariableDefinition = variable.Definition
