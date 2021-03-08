@@ -24,7 +24,7 @@ import (
 // browseCmd represents the browse command
 var browseCmd = &cobra.Command{
 	Use:   "browse",
-	Short: "Broswe credentials using an interacive terminal UI",
+	Short: "Browse credentials using an interacive terminal UI",
 	Long: `To make it easier to debug credential, and in particular certificate issues, 
 carousel provides an interactive terminal UI. Which gives the user an simpel
 way of browsing trought certificate signing chains in a tree like fashion.`,

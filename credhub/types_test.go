@@ -45,7 +45,7 @@ var _ = Describe("Types", func() {
 			Expect(cred.Generated).To(Equal(true))
 			Expect(cred.SelfSigned).To(Equal(true))
 			Expect(cred.Transitional).To(Equal(true))
-			Expect(cred.Ca.Issuer.CommonName).To(Equal("example.com"))
+			Expect(cred.Ca[0].Issuer.CommonName).To(Equal("example.com"))
 			Expect(cred.Certificate.Issuer.CommonName).To(Equal("example.com"))
 			Expect(cred.PrivateKey).To(Equal("-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"))
 			Expect(cred.VersionCreatedAt.String()).To(Equal("2017-01-01 04:07:18 +0000 UTC"))

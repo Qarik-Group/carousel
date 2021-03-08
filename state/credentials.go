@@ -20,6 +20,17 @@ func (s *state) Credentials(filters ...Filter) Credentials {
 	return out
 }
 
+func (s *state) Paths() []*Path {
+	paths := s.paths.Select(func(_, v interface{}) bool {
+		return true
+	})
+	out := make([]*Path, 0, paths.Size())
+	for _, path := range paths.Values() {
+		out = append(out, path.(*Path))
+	}
+	return out
+}
+
 func (creds Credentials) Collect(fn Collector) Credentials {
 	out := make(Credentials, 0)
 	for _, cred := range creds {

@@ -3,7 +3,7 @@ package state
 import "bytes"
 
 func (s *state) getCredentialBySubjectKeyId(keyId []byte) (*Credential, bool) {
-	_, foundValue := s.credentials.Find(func(index interface{}, value interface{}) bool {
+	_, foundValue := s.credentials.Find(func(_ interface{}, value interface{}) bool {
 		if value.(*Credential).Certificate != nil {
 			return bytes.Compare(value.(*Credential).Certificate.SubjectKeyId, keyId) == 0
 		}
