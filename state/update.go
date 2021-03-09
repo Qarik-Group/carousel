@@ -16,13 +16,16 @@ func (s *state) Update(credentials []*credhub.Credential, variables []*bosh.Vari
 		if found {
 			path = p.(*Path)
 		} else {
-			path = &Path{Name: cred.Name}
+			path = &Path{
+				Name:        cred.Name,
+				Deployments: make(Deployments, 0),
+			}
 			s.paths.Put(cred.Name, path)
 		}
 
 		c := Credential{
 			Credential:  cred,
-			Deployments: make([]*Deployment, 0),
+			Deployments: make(Deployments, 0),
 			Path:        path,
 		}
 
@@ -94,6 +97,10 @@ run bosh deploy for '%s' so the BOSH director can converge it's variable referen
 		}
 
 		path.VariableDefinition = variable.Definition
+
+		if !path.Deployments.Includes(d) {
+			path.Deployments = append(path.Deployments, d)
+		}
 	}
 
 	return nil

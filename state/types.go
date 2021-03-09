@@ -2,6 +2,7 @@ package state
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/starkandwayne/carousel/bosh"
@@ -12,6 +13,7 @@ type Path struct {
 	Name               string                   `json:"name"`
 	Versions           Credentials              `json:"-"`
 	VariableDefinition *bosh.VariableDefinition `json:"variable_definition"`
+	Deployments        Deployments
 }
 
 type Deployment struct {
@@ -57,6 +59,10 @@ func (c *Credential) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (c *Credential) PathVersion() string {
+	return fmt.Sprintf("%s@%s", c.Name, c.ID)
+}
+
 func (c *Credential) Active() bool {
 	if len(c.Deployments) != 0 {
 		return true
@@ -77,4 +83,13 @@ func (d Deployments) String() string {
 		tmp = append(tmp, deployment.Name)
 	}
 	return strings.Join(tmp, ", ")
+}
+
+func (d Deployments) Includes(this *Deployment) bool {
+	for _, deployment := range d {
+		if deployment == this {
+			return true
+		}
+	}
+	return false
 }
