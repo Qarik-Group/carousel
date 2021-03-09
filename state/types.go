@@ -63,6 +63,19 @@ func (c *Credential) PathVersion() string {
 	return fmt.Sprintf("%s@%s", c.Name, c.ID)
 }
 
+func (c *Credential) PendingDeploys() Deployments {
+	out := make(Deployments, 0)
+	if !c.Latest {
+		return out
+	}
+	for _, d := range c.Path.Deployments {
+		if !c.Deployments.Includes(d) {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
 func (c *Credential) Active() bool {
 	if len(c.Deployments) != 0 {
 		return true

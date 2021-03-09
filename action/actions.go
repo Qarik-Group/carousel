@@ -57,3 +57,15 @@ func (a *cleanUpAction) Name() string {
 func (a *cleanUpAction) Description() string {
 	return fmt.Sprintf("clean-up credential version %s since it is no longer used", a.subject.PathVersion())
 }
+
+type markTransitionalAction struct {
+	subject *state.Credential
+}
+
+func (a *markTransitionalAction) Name() string {
+	return fmt.Sprintf("%s - mark-transitional", a.subject.PathVersion())
+}
+
+func (a *markTransitionalAction) Description() string {
+	return fmt.Sprintf("mark transitional %s", a.subject.PathVersion())
+}
