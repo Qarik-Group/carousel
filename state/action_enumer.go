@@ -8,9 +8,9 @@ import (
 	"fmt"
 )
 
-const _ActionName = "nonebosh_deployregenerateclean_upmark_transitionalun_mark_transitional"
+const _ActionName = "noneno_overwritebosh_deployregenerateclean_upmark_transitionalun_mark_transitional"
 
-var _ActionIndex = [...]uint8{0, 4, 15, 25, 33, 50, 70}
+var _ActionIndex = [...]uint8{0, 4, 16, 27, 37, 45, 62, 82}
 
 func (i Action) String() string {
 	if i < 0 || i >= Action(len(_ActionIndex)-1) {
@@ -19,15 +19,16 @@ func (i Action) String() string {
 	return _ActionName[_ActionIndex[i]:_ActionIndex[i+1]]
 }
 
-var _ActionValues = []Action{0, 1, 2, 3, 4, 5}
+var _ActionValues = []Action{0, 1, 2, 3, 4, 5, 6}
 
 var _ActionNameToValueMap = map[string]Action{
 	_ActionName[0:4]:   0,
-	_ActionName[4:15]:  1,
-	_ActionName[15:25]: 2,
-	_ActionName[25:33]: 3,
-	_ActionName[33:50]: 4,
-	_ActionName[50:70]: 5,
+	_ActionName[4:16]:  1,
+	_ActionName[16:27]: 2,
+	_ActionName[27:37]: 3,
+	_ActionName[37:45]: 4,
+	_ActionName[45:62]: 5,
+	_ActionName[62:82]: 6,
 }
 
 // ActionString retrieves an enum value from the enum constants string name.

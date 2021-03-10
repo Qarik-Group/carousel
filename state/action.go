@@ -14,6 +14,7 @@ type Action int
 
 const (
 	None Action = iota
+	NoOverwrite
 	BoshDeploy
 	Regenerate
 	CleanUp
@@ -35,7 +36,7 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 
 	if cred.Path.VariableDefinition != nil &&
 		cred.Path.VariableDefinition.UpdateMode == bosh.NoOverwrite {
-		return None
+		return NoOverwrite
 	}
 
 	if cred.Latest && cred.VersionCreatedAt.Before(r.OlderThan) {

@@ -63,7 +63,7 @@ var _ = Describe("NextAction", func() {
 			})
 
 			It("finds the next action", func() {
-				Expect(credential.NextAction(criteria)).To(Equal(None))
+				Expect(credential.NextAction(criteria)).To(Equal(NoOverwrite))
 			})
 		})
 
