@@ -8,6 +8,7 @@ import (
 	"github.com/onsi/gomega/types"
 
 	. "github.com/starkandwayne/carousel/action"
+	"github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/credhub"
 	"github.com/starkandwayne/carousel/state"
 )
@@ -59,6 +60,23 @@ var _ = Describe("ConcreteActionFactory", func() {
 				Expect(actions).To(ContainElements(HaveName("up-to-date")))
 			})
 
+		})
+
+		Context("given a credential with its update mode set to no-overwrite", func() {
+			BeforeEach(func() {
+				credential.Path.VariableDefinition = &bosh.VariableDefinition{
+					UpdateMode: bosh.NoOverwrite,
+				}
+			})
+
+			It("finds the next action", func() {
+				credential.PathVersion()
+				actions := factory.NextAction(credential)
+				Expect(actions).To(ContainElements(
+					HaveName("up-to-date"),
+				))
+				Expect(len(actions)).To(Equal(1))
+			})
 		})
 
 		Context("given a latest credential which has not been deployed yet", func() {

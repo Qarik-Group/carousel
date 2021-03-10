@@ -3,6 +3,7 @@ package action
 import (
 	"time"
 
+	"github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/state"
 )
 
@@ -17,6 +18,12 @@ type ConcreteActionFactory struct {
 
 func (f *ConcreteActionFactory) NextAction(cred *state.Credential) (actions []Action) {
 	actions = make([]Action, 0)
+
+	if cred.Path.VariableDefinition != nil &&
+		cred.Path.VariableDefinition.UpdateMode == bosh.NoOverwrite {
+		actions = append(actions, &noOpAction{subject: cred})
+		return
+	}
 
 	if cred.Latest && cred.VersionCreatedAt.Before(f.OlderThan) {
 		actions = append(actions, &regenerateAction{subject: cred})
