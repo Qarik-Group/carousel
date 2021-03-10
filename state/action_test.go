@@ -1,34 +1,28 @@
-package action_test
+package state_test
 
 import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/types"
 
-	. "github.com/starkandwayne/carousel/action"
 	"github.com/starkandwayne/carousel/bosh"
 	"github.com/starkandwayne/carousel/credhub"
-	"github.com/starkandwayne/carousel/state"
+	. "github.com/starkandwayne/carousel/state"
 )
 
-// var _ = Describe("ActionFactory", func() {
-
-// })
-
-var _ = Describe("ConcreteActionFactory", func() {
+var _ = Describe("NextAction", func() {
 	var (
-		factory       ActionFactory
 		olderThan     time.Time
 		expiresBefore time.Time
-		credential    *state.Credential
+		credential    *Credential
+		criteria      RegenerationCriteria
 	)
 
 	BeforeEach(func() {
 		olderThan = time.Now()
 		expiresBefore = time.Now()
-		factory = &ConcreteActionFactory{
+		criteria = RegenerationCriteria{
 			OlderThan:     olderThan,
 			ExpiresBefore: expiresBefore,
 		}
@@ -37,27 +31,25 @@ var _ = Describe("ConcreteActionFactory", func() {
 	Describe("NextAction", func() {
 		BeforeEach(func() {
 			vca := olderThan.Add(time.Hour)
-			fooDeployment := state.Deployment{Name: "foo-deployment"}
-			credential = &state.Credential{
+			fooDeployment := Deployment{Name: "foo-deployment"}
+			credential = &Credential{
 				Latest:      true,
-				Deployments: state.Deployments{&fooDeployment},
+				Deployments: Deployments{&fooDeployment},
 				Credential: &credhub.Credential{
 					VersionCreatedAt: &vca,
 					ID:               "foo-id",
 					Name:             "/foo-name",
 				},
-				Path: &state.Path{
-					Deployments: state.Deployments{&fooDeployment},
+				Path: &Path{
+					Deployments: Deployments{&fooDeployment},
 				},
 			}
-			credential.Path.Versions = state.Credentials{credential}
+			credential.Path.Versions = Credentials{credential}
 		})
 
 		Context("given a up-to-date credential", func() {
 			It("finds the next action", func() {
-				credential.PathVersion()
-				actions := factory.NextAction(credential)
-				Expect(actions).To(ContainElements(HaveName("up-to-date")))
+				Expect(credential.NextAction(criteria)).To(Equal(None))
 			})
 
 		})
@@ -70,12 +62,7 @@ var _ = Describe("ConcreteActionFactory", func() {
 			})
 
 			It("finds the next action", func() {
-				credential.PathVersion()
-				actions := factory.NextAction(credential)
-				Expect(actions).To(ContainElements(
-					HaveName("up-to-date"),
-				))
-				Expect(len(actions)).To(Equal(1))
+				Expect(credential.NextAction(criteria)).To(Equal(None))
 			})
 		})
 
@@ -83,16 +70,11 @@ var _ = Describe("ConcreteActionFactory", func() {
 			BeforeEach(func() {
 				credential.Latest = true
 				credential.Path.Deployments = append(
-					credential.Path.Deployments, &state.Deployment{Name: "bar-deployment"})
+					credential.Path.Deployments, &Deployment{Name: "bar-deployment"})
 			})
 
 			It("finds the next action", func() {
-				credential.PathVersion()
-				actions := factory.NextAction(credential)
-				Expect(actions).To(ContainElements(
-					HaveName("deploy(bar-deployment)"),
-				))
-				Expect(len(actions)).To(Equal(1))
+				Expect(credential.NextAction(criteria)).To(Equal(BoshDeploy))
 			})
 
 			Context("which is to old", func() {
@@ -102,45 +84,30 @@ var _ = Describe("ConcreteActionFactory", func() {
 				})
 
 				It("finds the next action", func() {
-					credential.PathVersion()
-					actions := factory.NextAction(credential)
-					Expect(actions).To(ContainElements(
-						HaveName("regenerate"),
-					))
-					Expect(len(actions)).To(Equal(1))
+					Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
 				})
 			})
 		})
 
 		Context("given a credential which has not been deployed", func() {
 			BeforeEach(func() {
-				credential.Deployments = make(state.Deployments, 0)
-				credential.Path.Deployments = make(state.Deployments, 0)
+				credential.Deployments = make(Deployments, 0)
+				credential.Path.Deployments = make(Deployments, 0)
 			})
 
 			It("finds the next action", func() {
-				credential.PathVersion()
-				actions := factory.NextAction(credential)
-				Expect(actions).To(ContainElements(
-					HaveName("clean-up"),
-				))
-				Expect(len(actions)).To(Equal(1))
+				Expect(credential.NextAction(criteria)).To(Equal(CleanUp))
 			})
 
 			Context("which is still being referenced by a deployed credential", func() {
 				BeforeEach(func() {
-					credential.ReferencedBy = state.Credentials{&state.Credential{
-						Deployments: make(state.Deployments, 1),
+					credential.ReferencedBy = Credentials{&Credential{
+						Deployments: make(Deployments, 1),
 					}}
 				})
 
 				It("finds the next action", func() {
-					credential.PathVersion()
-					actions := factory.NextAction(credential)
-					Expect(actions).To(ContainElements(
-						HaveName("up-to-date"),
-					))
-					Expect(len(actions)).To(Equal(1))
+					Expect(credential.NextAction(criteria)).To(Equal(None))
 				})
 			})
 		})
@@ -150,7 +117,7 @@ var _ = Describe("ConcreteActionFactory", func() {
 				ed := expiresBefore.Add(-time.Hour)
 				credential.ExpiryDate = &ed
 				edca := expiresBefore.Add(+time.Hour)
-				credential.SignedBy = &state.Credential{
+				credential.SignedBy = &Credential{
 					Credential: &credhub.Credential{
 						ExpiryDate: &edca,
 					},
@@ -159,17 +126,13 @@ var _ = Describe("ConcreteActionFactory", func() {
 
 			It("finds the next action", func() {
 				credential.PathVersion()
-				actions := factory.NextAction(credential)
-				Expect(actions).To(ContainElements(
-					HaveName("regenerate"),
-				))
-				Expect(len(actions)).To(Equal(1))
+				Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
 			})
 
 			Context("which is signed by an expiring ca", func() {
 				BeforeEach(func() {
 					ed := expiresBefore.Add(-time.Hour)
-					credential.SignedBy = &state.Credential{
+					credential.SignedBy = &Credential{
 						Credential: &credhub.Credential{
 							ExpiryDate: &ed,
 						},
@@ -177,12 +140,7 @@ var _ = Describe("ConcreteActionFactory", func() {
 				})
 
 				It("finds the next action", func() {
-					credential.PathVersion()
-					actions := factory.NextAction(credential)
-					Expect(actions).To(ContainElements(
-						HaveName("up-to-date"),
-					))
-					Expect(len(actions)).To(Equal(1))
+					Expect(credential.NextAction(criteria)).To(Equal(None))
 				})
 			})
 		})
@@ -194,7 +152,7 @@ var _ = Describe("ConcreteActionFactory", func() {
 				credential.Signing = &signing
 				credential.Latest = false
 				credential.Path.Versions = append(credential.Path.Versions,
-					&state.Credential{
+					&Credential{
 						Deployments: credential.Path.Deployments,
 						Latest:      true,
 						Credential: &credhub.Credential{
@@ -206,12 +164,7 @@ var _ = Describe("ConcreteActionFactory", func() {
 			})
 
 			It("finds the next action", func() {
-				credential.PathVersion()
-				actions := factory.NextAction(credential)
-				Expect(actions).To(ContainElements(
-					HaveName("mark-transitional"),
-				))
-				Expect(len(actions)).To(Equal(1))
+				Expect(credential.NextAction(criteria)).To(Equal(MarkTransitional))
 			})
 		})
 
@@ -221,7 +174,7 @@ var _ = Describe("ConcreteActionFactory", func() {
 					BeforeEach(func() {
 						signing := true
 						vca := olderThan.Add(time.Hour)
-						signingCa := state.Credential{
+						signingCa := Credential{
 							Deployments: credential.Path.Deployments,
 							Latest:      true,
 							Signing:     &signing,
@@ -231,18 +184,18 @@ var _ = Describe("ConcreteActionFactory", func() {
 							Path: credential.Path,
 						}
 
-						oldLeaf := state.Credential{
-							Deployments: make(state.Deployments, 0),
+						oldLeaf := Credential{
+							Deployments: make(Deployments, 0),
 							SignedBy:    credential,
 						}
 
-						newLeaf := state.Credential{
+						newLeaf := Credential{
 							Deployments: credential.Path.Deployments,
 							SignedBy:    &signingCa,
 						}
 
-						leafPath := state.Path{
-							Versions: state.Credentials{&newLeaf, &oldLeaf},
+						leafPath := Path{
+							Versions: Credentials{&newLeaf, &oldLeaf},
 						}
 
 						oldLeaf.Path = &leafPath
@@ -251,29 +204,18 @@ var _ = Describe("ConcreteActionFactory", func() {
 						credential.Transitional = true
 						credential.Path.Versions = append(credential.Path.Versions, &signingCa)
 
-						credential.Signs = state.Credentials{&oldLeaf}
-						signingCa.Signs = state.Credentials{&newLeaf}
+						credential.Signs = Credentials{&oldLeaf}
+						signingCa.Signs = Credentials{&newLeaf}
 
-						credential.Deployments = make(state.Deployments, 0)
+						credential.Deployments = make(Deployments, 0)
 						credential.Latest = false
 					})
 
 					It("finds the next action", func() {
-						credential.PathVersion()
-						actions := factory.NextAction(credential)
-						Expect(actions).To(ContainElements(
-							HaveName("un-mark-transitional"),
-						))
-						Expect(len(actions)).To(Equal(1))
+						Expect(credential.NextAction(criteria)).To(Equal(UnMarkTransitional))
 					})
 				})
 			})
 		})
 	})
 })
-
-func HaveName(n string) types.GomegaMatcher {
-	return WithTransform(func(a Action) string {
-		return a.Name()
-	}, ContainSubstring(n))
-}
