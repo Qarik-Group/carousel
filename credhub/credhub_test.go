@@ -44,7 +44,7 @@ var _ = Describe("Credhub", func() {
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/uaa/oauth/token"),
 				ghttp.RespondWith(http.StatusOK, `
-				      {"access_token":"token","token_type":"bearer","expires_in":"3600"}
+							{"access_token":"token","token_type":"bearer","expires_in":"3600"}
 				`, header),
 			),
 		)
@@ -64,56 +64,56 @@ var _ = Describe("Credhub", func() {
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/api/v1/data", "path="),
 					ghttp.RespondWith(http.StatusOK, `{
-  "credentials" : [ {
-    "version_created_at" : "2019-02-01T20:37:52Z",
-    "name" : "/some-unique-name"
-  }, {
-    "version_created_at" : "2019-02-01T20:37:52Z",
-    "name" : "/some-name"
-  } ]
+	"credentials" : [ {
+		"version_created_at" : "2019-02-01T20:37:52Z",
+		"name" : "/some-unique-name"
+	}, {
+		"version_created_at" : "2019-02-01T20:37:52Z",
+		"name" : "/some-name"
+	} ]
 }`,
 					),
 				),
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/api/v1/certificates/"),
 					ghttp.RespondWith(http.StatusOK, `{
-  "certificates" : [ {
-    "name" : "/some-name",
-    "versions" : [ {
-      "id" : "b386c4cc-abfb-4150-95e5-449d7655e62d",
-      "expiry_date" : "2020-02-01T20:37:52Z",
-      "transitional" : true,
-      "certificate_authority" : false,
-      "self_signed" : false,
-      "generated" : false
-    }, {
-      "id" : "86bfcd3a-aceb-4ec6-bf67-efd5932a9bf2",
-      "expiry_date" : "2019-02-01T20:37:52Z",
-      "transitional" : false,
-      "certificate_authority" : false,
-      "self_signed" : false,
-      "generated" : false
-    } ],
-    "signed_by" : "/testCa",
-    "signs" : [ "/cert1", "/cert2" ],
-    "id" : "f6f1da12-03a3-4db9-93c5-26aa1346785b"
-  } ]
+	"certificates" : [ {
+		"name" : "/some-name",
+		"versions" : [ {
+			"id" : "b386c4cc-abfb-4150-95e5-449d7655e62d",
+			"expiry_date" : "2020-02-01T20:37:52Z",
+			"transitional" : true,
+			"certificate_authority" : false,
+			"self_signed" : false,
+			"generated" : false
+		}, {
+			"id" : "86bfcd3a-aceb-4ec6-bf67-efd5932a9bf2",
+			"expiry_date" : "2019-02-01T20:37:52Z",
+			"transitional" : false,
+			"certificate_authority" : false,
+			"self_signed" : false,
+			"generated" : false
+		} ],
+		"signed_by" : "/testCa",
+		"signs" : [ "/cert1", "/cert2" ],
+		"id" : "f6f1da12-03a3-4db9-93c5-26aa1346785b"
+	} ]
 }`,
 					),
 				),
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data?name")),
+					ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data")),
 					ghttp.RespondWith(http.StatusOK, `{
-  "data" : [ {
-    "type" : "value",
-    "version_created_at" : "2019-02-01T20:37:52Z",
-    "id" : "eaebb03f-21a9-41f7-beb0-af4c60aa38d6",
-    "name" : "/some-name",
-    "metadata" : {
-      "description" : "example metadata"
-    },
-    "value" : "some-value"
-  } ]
+	"data" : [ {
+		"type" : "value",
+		"version_created_at" : "2019-02-01T20:37:52Z",
+		"id" : "eaebb03f-21a9-41f7-beb0-af4c60aa38d6",
+		"name" : "/some-name",
+		"metadata" : {
+			"description" : "example metadata"
+		},
+		"value" : "some-value"
+	} ]
 }`,
 					),
 				),
@@ -124,27 +124,27 @@ var _ = Describe("Credhub", func() {
 			JustBeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data?name")),
+						ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data")),
 						ghttp.RespondWith(http.StatusOK, `{
-  "data" : [ {
-    "type" : "ssh",
-    "version_created_at" : "2019-02-01T20:37:52Z",
-    "id" : "355d920a-5f2b-4e99-81f2-47562d7db5d4",
-    "name" : "/some-ssh",
-    "value" : {
-       "public_key": "-----BEGIN RSA PUBLIC KEY-----\n...\n-----END RSA PUBLIC KEY-----",
-       "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----",
-       "public_key_fingerprint": "some fingerprint"
-    }},{
-    "type" : "ssh",
-    "version_created_at" : "2020-02-01T20:37:52Z",
-    "id" : "6f7b19fc-3098-485a-b724-0c7d8788f9a5",
-    "name" : "/some-ssh",
-    "value" : {
-       "public_key": "-----BEGIN RSA PUBLIC KEY-----\n...\n-----END RSA PUBLIC KEY-----",
-       "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----",
-       "public_key_fingerprint": "some fingerprint"
-   }}]
+	"data" : [ {
+		"type" : "ssh",
+		"version_created_at" : "2019-02-01T20:37:52Z",
+		"id" : "355d920a-5f2b-4e99-81f2-47562d7db5d4",
+		"name" : "/some-ssh",
+		"value" : {
+			 "public_key": "-----BEGIN RSA PUBLIC KEY-----\n...\n-----END RSA PUBLIC KEY-----",
+			 "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----",
+			 "public_key_fingerprint": "some fingerprint"
+		}},{
+		"type" : "ssh",
+		"version_created_at" : "2020-02-01T20:37:52Z",
+		"id" : "6f7b19fc-3098-485a-b724-0c7d8788f9a5",
+		"name" : "/some-ssh",
+		"value" : {
+			 "public_key": "-----BEGIN RSA PUBLIC KEY-----\n...\n-----END RSA PUBLIC KEY-----",
+			 "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----",
+			 "public_key_fingerprint": "some fingerprint"
+	 }}]
 }`,
 						),
 					),
@@ -172,7 +172,7 @@ var _ = Describe("Credhub", func() {
 			JustBeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data?name")),
+						ghttp.VerifyRequest("GET", ContainSubstring("/api/v1/data")),
 						ghttp.RespondWith(http.StatusOK, `{`),
 					),
 				)
