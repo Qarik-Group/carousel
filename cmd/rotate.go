@@ -54,29 +54,58 @@ var rotateCmd = &cobra.Command{
 		credentials := state.Credentials()
 		credentials.SortByNameAndCreatedAt()
 
-		credentialsToRotate := []*cstate.Credential{}
+		credentialsToAction := []*cstate.Credential{}
 
-		cmd.Printf("Rotating credentials:\n")
+		cmd.Printf("Perform actions:\n")
 
 		for _, cred := range credentials {
 			switch action := cred.NextAction(criteria); {
-			case action == cstate.Regenerate:
-				cmd.Printf("%s, ", cred.PathVersion())
-				credentialsToRotate = append(credentialsToRotate, cred)
+			case action == cstate.BoshDeploy:
 				continue
+			case action == cstate.NoOverwrite:
+				continue
+			case action == cstate.None:
+				continue
+			default:
+				cmd.Printf("- %s %s\n",
+					action.String(), cred.PathVersion())
+				credentialsToAction = append(credentialsToAction, cred)
 			}
 		}
 
 		askForConfirmation()
 
-		cmd.Printf("\nPerforming credential rotation:\n")
+		cmd.Printf("\nPerforming actions:\n")
 
-		for _, cred := range credentialsToRotate {
-			cmd.Printf("- %s", cred.Name)
-			err := credhub.ReGenerate(cred.Credential)
-			if err != nil {
-				cmd.Printf(" got error: %s\n", err)
-				os.Exit(1)
+		for _, cred := range credentialsToAction {
+			action := cred.NextAction(criteria)
+			cmd.Printf("- %s %s\n",
+				action.String(), cred.PathVersion())
+			switch action {
+			case cstate.Regenerate:
+				err := credhub.ReGenerate(cred.Credential)
+				if err != nil {
+					cmd.Printf(" got error: %s\n", err)
+					os.Exit(1)
+				}
+			case cstate.MarkTransitional:
+				err := credhub.UpdateTransitional(cred.Credential, false)
+				if err != nil {
+					cmd.Printf(" got error: %s\n", err)
+					os.Exit(1)
+				}
+			case cstate.UnMarkTransitional:
+				err := credhub.UpdateTransitional(cred.Credential, true)
+				if err != nil {
+					cmd.Printf(" got error: %s\n", err)
+					os.Exit(1)
+				}
+			case cstate.CleanUp:
+				err := credhub.Delete(cred.Credential)
+				if err != nil {
+					cmd.Printf(" got error: %s\n", err)
+					os.Exit(1)
+				}
 			}
 			cmd.Print(" done\n")
 		}
