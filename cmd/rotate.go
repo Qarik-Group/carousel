@@ -87,4 +87,9 @@ var rotateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(rotateCmd)
+	rotateCmd.Flags().StringVar(&expiresWithin, "expires-within", "3m",
+		"filter certificates by expiry window (suffixes: d day, w week, y year)")
+
+	rotateCmd.Flags().StringVar(&olderThan, "older-than", "1y",
+		"filter credentials by age (suffixes: d day, w week, y year)")
 }
