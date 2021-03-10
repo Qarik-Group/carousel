@@ -39,6 +39,7 @@ var _ = Describe("NextAction", func() {
 					VersionCreatedAt: &vca,
 					ID:               "foo-id",
 					Name:             "/foo-name",
+					Type:             credhub.Certificate,
 				},
 				Path: &Path{
 					Deployments: Deployments{&fooDeployment},
@@ -86,6 +87,17 @@ var _ = Describe("NextAction", func() {
 				It("finds the next action", func() {
 					Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
 				})
+
+				Context("of a non regeneratable type", func() {
+					BeforeEach(func() {
+						credential.Type = credhub.JSON
+					})
+
+					It("finds the next action", func() {
+						Expect(credential.NextAction(criteria)).To(Equal(None))
+					})
+				})
+
 			})
 		})
 

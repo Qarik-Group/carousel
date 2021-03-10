@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/starkandwayne/carousel/bosh"
+	"github.com/starkandwayne/carousel/credhub"
 )
 
 //
@@ -26,6 +27,12 @@ type RegenerationCriteria struct {
 }
 
 func (cred *Credential) NextAction(r RegenerationCriteria) Action {
+	for _, ct := range []credhub.CredentialType{credhub.JSON, credhub.Value} {
+		if cred.Type == ct {
+			return None
+		}
+	}
+
 	if cred.Path.VariableDefinition != nil &&
 		cred.Path.VariableDefinition.UpdateMode == bosh.NoOverwrite {
 		return None
