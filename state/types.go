@@ -73,6 +73,13 @@ func (c *Credential) PendingDeploys() Deployments {
 			out = append(out, d)
 		}
 	}
+	for _, s := range c.Signs {
+		for _, d := range s.PendingDeploys() {
+			if !out.Includes(d) {
+				out = append(out, d)
+			}
+		}
+	}
 	return out
 }
 

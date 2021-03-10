@@ -36,17 +36,25 @@ func (f *ConcreteActionFactory) NextAction(cred *state.Credential) (actions []Ac
 		}
 	}
 
-	if !cred.Active() {
-		actions = append(actions, &cleanUpAction{subject: cred})
-		return
-	}
-
 	if cred.Signing != nil && *cred.Signing {
 		latest, found := cred.Path.Versions.Find(state.LatestFilter())
 		if found && latest.Transitional && latest.Active() && len(latest.PendingDeploys()) == 0 {
 			actions = append(actions, &markTransitionalAction{subject: cred})
 			return
 		}
+	}
+
+	if cred.Transitional {
+		signing, found := cred.Path.Versions.Find(state.SigningFilter())
+		if found && len(signing.PendingDeploys()) == 0 {
+			actions = append(actions, &unMarkTransitionalAction{subject: cred})
+			return
+		}
+	}
+
+	if !cred.Active() {
+		actions = append(actions, &cleanUpAction{subject: cred})
+		return
 	}
 
 	if cred.Latest && cred.ExpiryDate != nil &&

@@ -185,7 +185,6 @@ var _ = Describe("ConcreteActionFactory", func() {
 						},
 						Path: credential.Path,
 					})
-				credential.Path.Versions.SortByCreatedAt()
 			})
 
 			It("finds the next action", func() {
@@ -195,6 +194,61 @@ var _ = Describe("ConcreteActionFactory", func() {
 					HaveName("mark-transitional"),
 				))
 				Expect(len(actions)).To(Equal(1))
+			})
+		})
+
+		Context("given a transitional credential with an latest active sibling", func() {
+			Context("which signs all credentials signed by self", func() {
+				Context("all of which have also been deployed", func() {
+					BeforeEach(func() {
+						signing := true
+						vca := olderThan.Add(time.Hour)
+						signingCa := state.Credential{
+							Deployments: credential.Path.Deployments,
+							Latest:      true,
+							Signing:     &signing,
+							Credential: &credhub.Credential{
+								VersionCreatedAt: &vca,
+							},
+							Path: credential.Path,
+						}
+
+						oldLeaf := state.Credential{
+							Deployments: make(state.Deployments, 0),
+							SignedBy:    credential,
+						}
+
+						newLeaf := state.Credential{
+							Deployments: credential.Path.Deployments,
+							SignedBy:    &signingCa,
+						}
+
+						leafPath := state.Path{
+							Versions: state.Credentials{&newLeaf, &oldLeaf},
+						}
+
+						oldLeaf.Path = &leafPath
+						newLeaf.Path = &leafPath
+
+						credential.Transitional = true
+						credential.Path.Versions = append(credential.Path.Versions, &signingCa)
+
+						credential.Signs = state.Credentials{&oldLeaf}
+						signingCa.Signs = state.Credentials{&newLeaf}
+
+						credential.Deployments = make(state.Deployments, 0)
+						credential.Latest = false
+					})
+
+					It("finds the next action", func() {
+						credential.PathVersion()
+						actions := factory.NextAction(credential)
+						Expect(actions).To(ContainElements(
+							HaveName("un-mark-transitional"),
+						))
+						Expect(len(actions)).To(Equal(1))
+					})
+				})
 			})
 		})
 	})

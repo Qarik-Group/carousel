@@ -69,3 +69,15 @@ func (a *markTransitionalAction) Name() string {
 func (a *markTransitionalAction) Description() string {
 	return fmt.Sprintf("mark transitional %s", a.subject.PathVersion())
 }
+
+type unMarkTransitionalAction struct {
+	subject *state.Credential
+}
+
+func (a *unMarkTransitionalAction) Name() string {
+	return fmt.Sprintf("%s - un-mark-transitional", a.subject.PathVersion())
+}
+
+func (a *unMarkTransitionalAction) Description() string {
+	return fmt.Sprintf("un-mark transitional %s", a.subject.PathVersion())
+}
