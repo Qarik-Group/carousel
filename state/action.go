@@ -23,8 +23,9 @@ const (
 )
 
 type RegenerationCriteria struct {
-	OlderThan     time.Time
-	ExpiresBefore time.Time
+	OlderThan        time.Time
+	ExpiresBefore    time.Time
+	IgnoreUpdateMode bool
 }
 
 func (cred *Credential) NextAction(r RegenerationCriteria) Action {
@@ -34,7 +35,7 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 		}
 	}
 
-	if cred.Path.VariableDefinition != nil &&
+	if !r.IgnoreUpdateMode && cred.Path.VariableDefinition != nil &&
 		cred.Path.VariableDefinition.UpdateMode == bosh.NoOverwrite {
 		return NoOverwrite
 	}

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+		http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/karrick/tparse"
 	"github.com/spf13/cobra"
-	"time"
 
 	cstate "github.com/starkandwayne/carousel/state"
 )
@@ -32,26 +30,15 @@ var rotateCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
+
+		regenerationCriteria, err := criteria.RegenerationCriteria()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		refresh()
 
-		ew, err := tparse.AddDuration(time.Now(), "+"+expiresWithin)
-		if err != nil {
-			logger.Fatalf("failed to parse duration: %s, got: %s",
-				expiresWithin, err)
-		}
-
-		ot, err := tparse.AddDuration(time.Now(), "-"+olderThan)
-		if err != nil {
-			logger.Fatalf("failed to parse duration: %s, got: %s",
-				olderThan, err)
-		}
-
-		criteria := cstate.RegenerationCriteria{
-			OlderThan:     ot,
-			ExpiresBefore: ew,
-		}
-
-		credentials := state.Credentials()
+		credentials := state.Credentials(filters.Filters()...)
 		credentials.SortByNameAndCreatedAt()
 
 		credentialsToAction := []*cstate.Credential{}
@@ -59,7 +46,7 @@ var rotateCmd = &cobra.Command{
 		cmd.Printf("Perform actions:\n")
 
 		for _, cred := range credentials {
-			switch action := cred.NextAction(criteria); {
+			switch action := cred.NextAction(regenerationCriteria); {
 			case action == cstate.BoshDeploy:
 				continue
 			case action == cstate.NoOverwrite:
@@ -78,8 +65,8 @@ var rotateCmd = &cobra.Command{
 		cmd.Printf("\nPerforming actions:\n")
 
 		for _, cred := range credentialsToAction {
-			action := cred.NextAction(criteria)
-			cmd.Printf("- %s %s\n",
+			action := cred.NextAction(regenerationCriteria)
+			cmd.Printf("- %s %s",
 				action.String(), cred.PathVersion())
 			switch action {
 			case cstate.Regenerate:
@@ -116,9 +103,9 @@ var rotateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(rotateCmd)
-	rotateCmd.Flags().StringVar(&expiresWithin, "expires-within", "3m",
-		"filter certificates by expiry window (suffixes: d day, w week, y year)")
 
-	rotateCmd.Flags().StringVar(&olderThan, "older-than", "1y",
-		"filter credentials by age (suffixes: d day, w week, y year)")
+	addExpiresWithinCriteriaFlag(rotateCmd.Flags())
+	addOlderThanCireteriaFlag(rotateCmd.Flags())
+	addIgnoreUpdateModeCireteriaFlag(rotateCmd.Flags())
+	addNameFlag(rotateCmd.Flags())
 }

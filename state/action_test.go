@@ -65,6 +65,17 @@ var _ = Describe("NextAction", func() {
 			It("finds the next action", func() {
 				Expect(credential.NextAction(criteria)).To(Equal(NoOverwrite))
 			})
+
+			Context("but IgnoreUpdateMode was set to true", func() {
+				BeforeEach(func() {
+					criteria.IgnoreUpdateMode = true
+				})
+
+				It("finds the next action", func() {
+					Expect(credential.NextAction(criteria)).To(Equal(None))
+				})
+			})
+
 		})
 
 		Context("given a latest credential which has not been deployed yet", func() {

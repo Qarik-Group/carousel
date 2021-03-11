@@ -1,13 +1,45 @@
 package cmd
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/karrick/tparse"
 	"github.com/spf13/pflag"
 	ccredhub "github.com/starkandwayne/carousel/credhub"
 	. "github.com/starkandwayne/carousel/state"
+	cstate "github.com/starkandwayne/carousel/state"
 )
+
+type actionCriteria struct {
+	expiresWithin    string
+	olderThan        string
+	ignoreUpdateMode bool
+}
+
+var criteria = actionCriteria{}
+
+func (c actionCriteria) RegenerationCriteria() (cstate.RegenerationCriteria, error) {
+	ew, err := tparse.AddDuration(time.Now(), "+"+c.expiresWithin)
+	if err != nil {
+		return cstate.RegenerationCriteria{},
+			fmt.Errorf("failed to parse --expires-within flag into duration: %s, got: %s",
+				c.expiresWithin, err)
+	}
+
+	ot, err := tparse.AddDuration(time.Now(), "-"+c.olderThan)
+	if err != nil {
+		return cstate.RegenerationCriteria{},
+			fmt.Errorf("failed to parse --older-than flag into duration: %s, got: %s",
+				c.olderThan, err)
+	}
+
+	return cstate.RegenerationCriteria{
+		OlderThan:        ot,
+		ExpiresBefore:    ew,
+		IgnoreUpdateMode: c.ignoreUpdateMode,
+	}, nil
+}
 
 type credentialFilters struct {
 	deployment    string
@@ -107,17 +139,32 @@ func addNameFlag(set *pflag.FlagSet) {
 
 }
 
-func addExpiresWithinFlag(set *pflag.FlagSet) {
-	set.StringVar(&filters.expiresWithin, "expires-within", "",
-		"filter certificates by expiry window (suffixes: d day, w week, y year)")
-}
-
 func addSignedByFlag(set *pflag.FlagSet) {
 	set.StringVar(&filters.signedBy, "signed-by", "",
 		"filter certificates signed by a specific CA")
 }
 
+func addExpiresWithinFlag(set *pflag.FlagSet) {
+	set.StringVar(&filters.expiresWithin, "expires-within", "",
+		"filter certificates by expiry window (suffixes: d day, w week, y year)")
+}
+
 func addOlderThanFlag(set *pflag.FlagSet) {
 	set.StringVar(&filters.olderThan, "older-than", "",
 		"filter credentials by age (suffixes: d day, w week, y year)")
+}
+
+func addExpiresWithinCriteriaFlag(set *pflag.FlagSet) {
+	set.StringVar(&criteria.expiresWithin, "expires-within", "3m",
+		"regenerate certificates by expiry window (suffixes: d day, w week, y year)")
+}
+
+func addOlderThanCireteriaFlag(set *pflag.FlagSet) {
+	set.StringVar(&criteria.olderThan, "older-than", "1y",
+		"regenerate credentials by age (suffixes: d day, w week, y year)")
+}
+
+func addIgnoreUpdateModeCireteriaFlag(set *pflag.FlagSet) {
+	set.BoolVar(&criteria.ignoreUpdateMode, "ignore-update-mode", false,
+		"ignore the value of BOSH /variables/.../update_mode")
 }

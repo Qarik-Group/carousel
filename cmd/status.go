@@ -16,14 +16,10 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/karrick/tparse"
 	"github.com/spf13/cobra"
-	"time"
 
 	cstate "github.com/starkandwayne/carousel/state"
 )
-
-var expiresWithin, olderThan string
 
 // statusCmd represents the status command
 var statusCmd = &cobra.Command{
@@ -32,29 +28,18 @@ var statusCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
+
+		regenerationCriteria, err := criteria.RegenerationCriteria()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		refresh()
 
-		ew, err := tparse.AddDuration(time.Now(), "+"+expiresWithin)
-		if err != nil {
-			logger.Fatalf("failed to parse duration: %s, got: %s",
-				expiresWithin, err)
-		}
-
-		ot, err := tparse.AddDuration(time.Now(), "-"+olderThan)
-		if err != nil {
-			logger.Fatalf("failed to parse duration: %s, got: %s",
-				olderThan, err)
-		}
-
-		criteria := cstate.RegenerationCriteria{
-			OlderThan:     ot,
-			ExpiresBefore: ew,
-		}
-
-		credentials := state.Credentials()
+		credentials := state.Credentials(filters.Filters()...)
 		credentials.SortByNameAndCreatedAt()
 		for _, cred := range credentials {
-			switch action := cred.NextAction(criteria); {
+			switch action := cred.NextAction(regenerationCriteria); {
 			case action == cstate.None:
 				continue
 			case action == cstate.BoshDeploy:
@@ -71,9 +56,8 @@ var statusCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(statusCmd)
 
-	statusCmd.Flags().StringVar(&expiresWithin, "expires-within", "3m",
-		"filter certificates by expiry window (suffixes: d day, w week, y year)")
-
-	statusCmd.Flags().StringVar(&olderThan, "older-than", "1y",
-		"filter credentials by age (suffixes: d day, w week, y year)")
+	addExpiresWithinCriteriaFlag(statusCmd.Flags())
+	addOlderThanCireteriaFlag(statusCmd.Flags())
+	addIgnoreUpdateModeCireteriaFlag(statusCmd.Flags())
+	addNameFlag(statusCmd.Flags())
 }
