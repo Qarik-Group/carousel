@@ -89,7 +89,7 @@ var _ = Describe("NextAction", func() {
 				Expect(credential.NextAction(criteria)).To(Equal(BoshDeploy))
 			})
 
-			Context("which is to old", func() {
+			Context("which is too old", func() {
 				BeforeEach(func() {
 					vca := olderThan.Add(-10 * time.Minute)
 					credential.VersionCreatedAt = &vca
@@ -150,6 +150,16 @@ var _ = Describe("NextAction", func() {
 			It("finds the next action", func() {
 				credential.PathVersion()
 				Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
+			})
+
+			Context("which is self-signed", func() {
+				BeforeEach(func() {
+					credential.SignedBy = nil
+				})
+
+				It("finds the next action", func() {
+					Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
+				})
 			})
 
 			Context("which is signed by an expiring ca", func() {

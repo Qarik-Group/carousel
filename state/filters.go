@@ -75,7 +75,9 @@ func TransitionalFilter() Filter {
 func TypeFilter(types ...credhub.CredentialType) Filter {
 	return func(c *Credential) bool {
 		for _, t := range types {
-			return c.Type == t
+			if c.Type == t {
+				return true
+			}
 		}
 		return false
 	}

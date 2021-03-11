@@ -40,14 +40,6 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 		return NoOverwrite
 	}
 
-	if cred.Latest && cred.VersionCreatedAt.Before(r.OlderThan) {
-		return Regenerate
-	}
-
-	if cred.Latest && len(cred.PendingDeploys()) != 0 {
-		return BoshDeploy
-	}
-
 	if cred.Signing != nil && *cred.Signing {
 		latest, found := cred.Path.Versions.Find(LatestFilter())
 		if found && latest.Transitional && latest.Active() && len(latest.PendingDeploys()) == 0 {
@@ -67,9 +59,22 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 	}
 
 	if cred.Latest && cred.ExpiryDate != nil &&
-		cred.ExpiryDate.Before(r.ExpiresBefore) &&
-		!cred.SignedBy.ExpiryDate.Before(r.ExpiresBefore) {
+		cred.ExpiryDate.Before(r.ExpiresBefore) {
+		if cred.SignedBy == nil {
+			return Regenerate
+		} else if !cred.SignedBy.ExpiryDate.Before(r.ExpiresBefore) {
+			return Regenerate
+		} else {
+			return None
+		}
+	}
+
+	if cred.Latest && cred.VersionCreatedAt.Before(r.OlderThan) {
 		return Regenerate
+	}
+
+	if cred.Latest && len(cred.PendingDeploys()) != 0 {
+		return BoshDeploy
 	}
 
 	return None
