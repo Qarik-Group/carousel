@@ -60,4 +60,5 @@ func init() {
 	addOlderThanCireteriaFlag(statusCmd.Flags())
 	addIgnoreUpdateModeCireteriaFlag(statusCmd.Flags())
 	addNameFlag(statusCmd.Flags())
+	addSignedByFlag(statusCmd.Flags())
 }

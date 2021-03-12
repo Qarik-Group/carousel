@@ -42,7 +42,7 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 
 	if cred.Signing != nil && *cred.Signing {
 		latest, found := cred.Path.Versions.Find(LatestFilter())
-		if found && latest.Transitional && latest.Active() && len(latest.PendingDeploys()) == 0 {
+		if found && latest.Transitional && latest.Active() {
 			return MarkTransitional
 		}
 	}
