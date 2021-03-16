@@ -155,7 +155,7 @@ func addOlderThanFlag(set *pflag.FlagSet) {
 }
 
 func addExpiresWithinCriteriaFlag(set *pflag.FlagSet) {
-	set.StringVar(&criteria.expiresWithin, "expires-within", "3m",
+	set.StringVar(&criteria.expiresWithin, "expires-within", "12w",
 		"regenerate certificates by expiry window (suffixes: d day, w week, y year)")
 }
 
