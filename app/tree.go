@@ -18,6 +18,8 @@ func (a *Application) viewTree() *tview.TreeView {
 
 func (a *Application) updateTree() {
 	root := tview.NewTreeNode("∎")
+	root.SetReference("root")
+	a.expanded[refToID(root.GetReference())] = true
 
 	for _, credType := range credhub.CredentialTypeValues() {
 		credentials := a.state.Credentials(
@@ -29,7 +31,14 @@ func (a *Application) updateTree() {
 			continue
 		}
 
-		typeNode := tview.NewTreeNode(credType.String()).Collapse()
+		typeNode := tview.NewTreeNode(credType.String()).SetReference(credType.String())
+
+		if expanded, ok := a.expanded[refToID(typeNode.GetReference())]; ok {
+			typeNode.SetExpanded(expanded)
+		} else {
+			typeNode.SetExpanded(false)
+		}
+
 		root.AddChild(typeNode)
 
 		for _, credential := range credentials {
@@ -44,17 +53,23 @@ func (a *Application) updateTree() {
 	}
 
 	root.Walk(func(node, parent *tview.TreeNode) bool {
-		if currentNode != nil {
-			return false
-		}
 		if refToID(node.GetReference()) == a.selectedID {
 			currentNode = node
-			root.ExpandAll()
 			a.actionShowDetails(currentNode.GetReference())
-			return false
 		}
+
+		if expanded, ok := a.expanded[refToID(node.GetReference())]; ok {
+			node.SetExpanded(expanded)
+		} else {
+			node.SetExpanded(false)
+		}
+
 		return true
 	})
+
+	if currentNode == nil {
+		currentNode = root
+	}
 
 	a.layout.tree.SetRoot(root).SetCurrentNode(currentNode)
 
@@ -64,6 +79,7 @@ func (a *Application) updateTree() {
 	})
 
 	a.layout.tree.SetSelectedFunc(func(node *tview.TreeNode) {
+		a.expanded[refToID(node.GetReference())] = !node.IsExpanded()
 		node.SetExpanded(!node.IsExpanded())
 	})
 }
@@ -74,8 +90,10 @@ func refToID(ref interface{}) string {
 		return v.ID
 	case *state.Path:
 		return v.Name
+	case string:
+		return v
 	default:
-		return ""
+		return "none"
 	}
 }
 

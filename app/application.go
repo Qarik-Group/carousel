@@ -16,6 +16,7 @@ type Application struct {
 	layout      *Layout
 	keyBindings map[tcell.Key]func()
 	selectedID  string
+	expanded    map[string]bool
 	refresh     func() error
 }
 
@@ -30,6 +31,7 @@ func NewApplication(state state.State, ch credhub.CredHub, refresh func() error)
 		Application: tview.NewApplication(),
 		state:       state,
 		keyBindings: make(map[tcell.Key]func(), 0),
+		expanded:    make(map[string]bool, 0),
 		credhub:     ch,
 		refresh:     refresh,
 	}
