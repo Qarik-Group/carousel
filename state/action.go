@@ -47,6 +47,13 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 		}
 	}
 
+	if cred.Latest && cred.SignedBy != nil {
+		latestCa, foundCa := cred.SignedBy.Path.Versions.Find(LatestFilter())
+		if foundCa && !latestCa.Transitional && latestCa.Active() && cred.SignedBy != latestCa {
+			return Regenerate
+		}
+	}
+
 	if cred.Latest && cred.ExpiryDate != nil &&
 		cred.ExpiryDate.Before(r.ExpiresBefore) {
 		if cred.SignedBy == nil {
@@ -62,18 +69,21 @@ func (cred *Credential) NextAction(r RegenerationCriteria) Action {
 		return Regenerate
 	}
 
-	if cred.Latest && len(cred.PendingDeploys()) != 0 {
+	if cred.Latest && len(cred.PendingDeploys()) != 0 &&
+		!(cred.Type == credhub.Certificate &&
+			cred.SignedBy == nil &&
+			len(cred.ReferencedBy) == 0) {
 		return BoshDeploy
 	}
 
-	if cred.Transitional {
+	if cred.Transitional && !cred.Latest {
 		signing, found := cred.Path.Versions.Find(SigningFilter())
 		if found && len(signing.PendingDeploys()) == 0 {
 			return UnMarkTransitional
 		}
 	}
 
-	if !cred.Active() {
+	if !cred.Active() && cred.Type == credhub.Certificate {
 		return CleanUp
 	}
 

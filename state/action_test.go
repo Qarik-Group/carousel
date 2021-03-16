@@ -11,7 +11,7 @@ import (
 	. "github.com/starkandwayne/carousel/state"
 )
 
-var _ = Describe("NextAction", func() {
+var _ = Describe("Credential", func() {
 	var (
 		olderThan     time.Time
 		expiresBefore time.Time
@@ -39,7 +39,7 @@ var _ = Describe("NextAction", func() {
 					VersionCreatedAt: &vca,
 					ID:               "foo-id",
 					Name:             "/foo-name",
-					Type:             credhub.Certificate,
+					Type:             credhub.Password,
 				},
 				Path: &Path{
 					Deployments: Deployments{&fooDeployment},
@@ -112,9 +112,10 @@ var _ = Describe("NextAction", func() {
 			})
 		})
 
-		Context("given a credential which has not been deployed", func() {
+		Context("given a cleanable credential which has not been deployed", func() {
 			BeforeEach(func() {
 				credential.Deployments = make(Deployments, 0)
+				credential.Type = credhub.Certificate
 				credential.Path.Deployments = make(Deployments, 0)
 			})
 
@@ -133,6 +134,16 @@ var _ = Describe("NextAction", func() {
 					Expect(credential.NextAction(criteria)).To(Equal(None))
 				})
 			})
+
+			Context("of a type which does not support version deletion", func() {
+				BeforeEach(func() {
+					credential.Type = credhub.Password
+				})
+
+				It("finds the next action", func() {
+					Expect(credential.NextAction(criteria)).To(Equal(None))
+				})
+			})
 		})
 
 		Context("given a credential which is expiring", func() {
@@ -145,6 +156,7 @@ var _ = Describe("NextAction", func() {
 						ExpiryDate: &edca,
 					},
 				}
+				credential.SignedBy.Path = &Path{Versions: Credentials{credential.SignedBy}}
 			})
 
 			It("finds the next action", func() {
@@ -170,15 +182,79 @@ var _ = Describe("NextAction", func() {
 							ExpiryDate: &ed,
 						},
 					}
+					credential.SignedBy.Path = &Path{
+						Versions: Credentials{credential.SignedBy},
+					}
 				})
 
 				It("finds the next action", func() {
 					Expect(credential.NextAction(criteria)).To(Equal(None))
 				})
+
+				Context("with a active not expiring sibiling ca", func() {
+					BeforeEach(func() {
+						ed := expiresBefore.Add(+time.Hour)
+						credential.SignedBy.Path.Versions = append(
+							credential.SignedBy.Path.Versions,
+							&Credential{Latest: true,
+								ReferencedBy: Credentials{credential},
+								Credential: &credhub.Credential{
+									Transitional: false,
+									ExpiryDate:   &ed,
+								}},
+						)
+					})
+
+					It("finds the next action", func() {
+						Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
+					})
+				})
 			})
 		})
 
-		Context("given a signing credential with an latest active transitional sibling", func() {
+		Context("given a valid leaf with a singing ca that has an active non transitional latest sibling", func() {
+			BeforeEach(func() {
+				signing := true
+				credential.Latest = true
+				credential.SignedBy = &Credential{
+					Latest: false,
+					Credential: &credhub.Credential{
+						Transitional: true,
+					},
+					Path: &Path{},
+				}
+				activeCa := &Credential{
+					Latest:       true,
+					Signing:      &signing,
+					ReferencedBy: Credentials{credential},
+					Credential: &credhub.Credential{
+						Transitional: false,
+					},
+				}
+				credential.SignedBy.Path.Versions = Credentials{activeCa, credential.SignedBy}
+			})
+
+			It("finds the next action", func() {
+				Expect(credential.NextAction(criteria)).To(Equal(Regenerate))
+			})
+		})
+
+		Context("given a transitional latest credential which is not referenced", func() {
+			BeforeEach(func() {
+				credential.Latest = true
+				credential.Transitional = true
+				credential.SignedBy = nil
+				credential.Type = credhub.Certificate
+				credential.ReferencedBy = make(Credentials, 0)
+				credential.Deployments = make(Deployments, 0)
+			})
+
+			It("finds the next action", func() {
+				Expect(credential.NextAction(criteria)).To(Equal(CleanUp))
+			})
+		})
+
+		Context("given a signing credential with a latest active transitional sibling", func() {
 			BeforeEach(func() {
 				signing := true
 				vca := olderThan.Add(time.Hour)
