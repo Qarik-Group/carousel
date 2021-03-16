@@ -1,0 +1,66 @@
+name: carousel-demo
+instance_groups:
+- azs: [z1]
+  instances: 1
+  jobs:
+  - name: pre-start-script
+    release: os-conf
+    properties:
+      script: |-
+        #!/bin/bash
+        exit 0
+
+        echo "((carousel_demo_ssh.public_key))"
+        echo "((carousel_demo_rsa.public_key))"
+        echo "((carousel_demo_password))"
+        echo "((carousel_demo_user.username))"
+        echo "((carousel_demo_ca.certificate))"
+        echo "((carousel_demo_leaf.certificate))"
+
+  name: carousel-demo
+  networks:
+  - name: default
+  stemcell: default
+  vm_type: default
+variables:
+- name: carousel_demo_ca
+  type: certificate
+  # uppdate_mode: converge
+  options:
+    common_name: carousel-demo-ca
+    duration: 365
+    is_ca: true
+- name: carousel_demo_leaf
+  type: certificate
+  #update_mode: converge
+  options:
+    common_name: carousel.example.com
+    alternative_names:
+    - carousel.example.com
+    ca: carousel_demo_ca
+- name: carousel_demo_user
+  type: user
+  update_mode: converge
+- name: carousel_demo_ssh
+  type: ssh
+  update_mode: converge
+- name: carousel_demo_rsa
+  type: rsa
+  update_mode: converge
+- name: carousel_demo_password
+  type: password
+  update_mode: converge
+releases:
+- name: "os-conf"
+  version: "22.1.0"
+  url: "https://bosh.io/d/github.com/cloudfoundry/os-conf-release?v=22.1.0"
+  sha1: "7ef05f6f3ebc03f59ad8131851dbd1abd1ab3663"
+stemcells:
+- alias: default
+  os: ubuntu-xenial
+  version: latest
+update:
+  canaries: 2
+  canary_watch_time: 5000-60000
+  max_in_flight: 1
+  update_watch_time: 5000-60000
