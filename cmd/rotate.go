@@ -36,68 +36,90 @@ var rotateCmd = &cobra.Command{
 			logger.Fatal(err)
 		}
 
-		refresh()
+		var credentialsToDeploy, credentialsToAction cstate.Credentials
 
-		credentials := state.Credentials(filters.Filters()...)
-		credentials.SortByNameAndCreatedAt()
+		for {
+			cmd.Printf("Refreshing state")
+			refresh()
+			cmd.Printf(" done\n\n")
 
-		credentialsToAction := []*cstate.Credential{}
+			credentialsToAction = make(cstate.Credentials, 0)
+			credentialsToDeploy = make(cstate.Credentials, 0)
 
-		cmd.Printf("Perform actions:\n")
+			credentials := state.Credentials(filters.Filters()...)
+			credentials.SortByNameAndCreatedAt()
 
-		for _, cred := range credentials {
-			switch action := cred.NextAction(regenerationCriteria); {
-			case action == cstate.BoshDeploy:
-				continue
-			case action == cstate.NoOverwrite:
-				continue
-			case action == cstate.None:
-				continue
-			default:
-				cmd.Printf("- %s %s\n",
-					action.String(), cred.PathVersion())
-				credentialsToAction = append(credentialsToAction, cred)
+			for _, cred := range credentials {
+				switch action := cred.NextAction(regenerationCriteria); {
+				case action == cstate.BoshDeploy:
+					credentialsToDeploy = append(credentialsToDeploy, cred)
+				case action == cstate.NoOverwrite:
+					continue
+				case action == cstate.None:
+					continue
+				default:
+					credentialsToAction = append(credentialsToAction, cred)
+				}
+			}
+
+			if len(credentialsToAction) == 0 {
+				cmd.Printf("No further actions to perform\n\n")
+				break
+			} else {
+				cmd.Printf("Perform actions:\n")
+
+				for _, cred := range credentialsToAction {
+					cmd.Printf("- %s %s\n",
+						cred.NextAction(regenerationCriteria).String(), cred.PathVersion())
+				}
+
+				askForConfirmation()
+
+				cmd.Printf("\nPerforming actions:\n")
+
+				for _, cred := range credentialsToAction {
+					action := cred.NextAction(regenerationCriteria)
+					cmd.Printf("- %s %s",
+						action.String(), cred.PathVersion())
+					switch action {
+					case cstate.Regenerate:
+						err := credhub.ReGenerate(cred.Credential)
+						if err != nil {
+							cmd.Printf(" got error: %s\n", err)
+							os.Exit(1)
+						}
+					case cstate.MarkTransitional:
+						err := credhub.UpdateTransitional(cred.Credential, false)
+						if err != nil {
+							cmd.Printf(" got error: %s\n", err)
+							os.Exit(1)
+						}
+					case cstate.UnMarkTransitional:
+						err := credhub.UpdateTransitional(cred.Credential, true)
+						if err != nil {
+							cmd.Printf(" got error: %s\n", err)
+							os.Exit(1)
+						}
+					case cstate.CleanUp:
+						err := credhub.Delete(cred.Credential)
+						if err != nil {
+							cmd.Printf(" got error: %s\n", err)
+							os.Exit(1)
+						}
+					}
+					cmd.Print(" done\n")
+				}
+				cmd.Println("")
 			}
 		}
 
-		askForConfirmation()
-
-		cmd.Printf("\nPerforming actions:\n")
-
-		for _, cred := range credentialsToAction {
-			action := cred.NextAction(regenerationCriteria)
-			cmd.Printf("- %s %s",
-				action.String(), cred.PathVersion())
-			switch action {
-			case cstate.Regenerate:
-				err := credhub.ReGenerate(cred.Credential)
-				if err != nil {
-					cmd.Printf(" got error: %s\n", err)
-					os.Exit(1)
-				}
-			case cstate.MarkTransitional:
-				err := credhub.UpdateTransitional(cred.Credential, false)
-				if err != nil {
-					cmd.Printf(" got error: %s\n", err)
-					os.Exit(1)
-				}
-			case cstate.UnMarkTransitional:
-				err := credhub.UpdateTransitional(cred.Credential, true)
-				if err != nil {
-					cmd.Printf(" got error: %s\n", err)
-					os.Exit(1)
-				}
-			case cstate.CleanUp:
-				err := credhub.Delete(cred.Credential)
-				if err != nil {
-					cmd.Printf(" got error: %s\n", err)
-					os.Exit(1)
-				}
+		if len(credentialsToDeploy) != 0 {
+			cmd.Printf("Found credential(s) pending a bosh deploy:\n")
+			for _, cred := range credentialsToDeploy {
+				cmd.Printf("- bosh_deploy(%s) %s\n",
+					cred.PendingDeploys().String(), cred.PathVersion())
 			}
-			cmd.Print(" done\n")
 		}
-
-		cmd.Println("Finished")
 	},
 }
 
@@ -108,5 +130,4 @@ func init() {
 	addOlderThanCireteriaFlag(rotateCmd.Flags())
 	addIgnoreUpdateModeCireteriaFlag(rotateCmd.Flags())
 	addNameFlag(rotateCmd.Flags())
-	addSignedByFlag(rotateCmd.Flags())
 }
