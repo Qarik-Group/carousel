@@ -130,4 +130,5 @@ func init() {
 	addOlderThanCireteriaFlag(rotateCmd.Flags())
 	addIgnoreUpdateModeCireteriaFlag(rotateCmd.Flags())
 	addNameFlag(rotateCmd.Flags())
+	addDeploymentFlag(rotateCmd.Flags())
 }

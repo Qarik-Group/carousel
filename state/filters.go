@@ -85,8 +85,10 @@ func TypeFilter(types ...credhub.CredentialType) Filter {
 
 func DeploymentFilter(deployment string) Filter {
 	return func(c *Credential) bool {
-		for _, d := range c.Deployments {
-			return d.Name == deployment
+		for _, d := range c.Path.Deployments {
+			if d.Name == deployment {
+				return true
+			}
 		}
 		return false
 	}

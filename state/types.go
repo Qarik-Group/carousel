@@ -51,3 +51,12 @@ func (d Deployments) Includes(this *Deployment) bool {
 	}
 	return false
 }
+
+func (d Deployments) IncludesName(name string) bool {
+	for _, deployment := range d {
+		if deployment.Name == name {
+			return true
+		}
+	}
+	return false
+}

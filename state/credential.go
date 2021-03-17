@@ -63,6 +63,15 @@ func (c *Credential) Active() bool {
 	return false
 }
 
+func (c *Credential) LatestDeployedTo(deployment string) *Credential {
+	for _, version := range c.Path.Versions {
+		if version.Deployments.IncludesName(deployment) {
+			return version
+		}
+	}
+	return nil
+}
+
 func (c *Credential) Summary() string {
 	switch c.Type {
 	case credhub.Certificate:
