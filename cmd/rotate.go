@@ -69,8 +69,8 @@ var rotateCmd = &cobra.Command{
 				cmd.Printf("Perform actions:\n")
 
 				for _, cred := range credentialsToAction {
-					cmd.Printf("- %s %s\n",
-						cred.NextAction(regenerationCriteria).String(), cred.PathVersion())
+					cmd.Printf("- %s %s\n  L %s\n",
+						cred.NextAction(regenerationCriteria).String(), cred.PathVersion(), cred.Summary())
 				}
 
 				askForConfirmation()
@@ -116,8 +116,8 @@ var rotateCmd = &cobra.Command{
 		if len(credentialsToDeploy) != 0 {
 			cmd.Printf("Found credential(s) pending a bosh deploy:\n")
 			for _, cred := range credentialsToDeploy {
-				cmd.Printf("- bosh_deploy(%s) %s\n",
-					cred.PendingDeploys().String(), cred.PathVersion())
+				cmd.Printf("- bosh_deploy(%s) %s\n  L %s\n",
+					cred.PendingDeploys().String(), cred.PathVersion(), cred.Summary())
 			}
 		}
 	},

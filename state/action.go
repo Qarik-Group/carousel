@@ -8,7 +8,7 @@ import (
 )
 
 //
-//go:generate go run github.com/alvaroloes/enumer -type=Action -json -transform=snake
+//go:generate go run github.com/alvaroloes/enumer -type=Action -json -transform=CamelCase
 
 type Action int
 
