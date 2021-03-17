@@ -52,17 +52,17 @@ var diffCmd = &cobra.Command{
 					exitOne = true
 					cmd.Printf("Found credential(s) pending a bosh deploy:\n")
 				}
-				cmd.Printf("+ bosh_deploy(%s) %s\n  L %s\n",
-					cred.PendingDeploys().String(), cred.PathVersion(), cred.Summary())
+				cmd.Printf("%s\n  + version: %s | %s\n", cred.Path.Name, cred.ID, cred.Summary())
 				latestDeployed = cred.LatestDeployedTo(filters.deployment)
 				if latestDeployed != nil {
-					cmd.Printf("- bosh_deploy(%s) %s\n  L %s\n",
-						latestDeployed.PendingDeploys().String(), latestDeployed.PathVersion(), latestDeployed.Summary())
+					cmd.Printf("  - version: %s | %s\n", latestDeployed.ID, latestDeployed.Summary())
 				}
 			}
 		}
 		if exitOne {
 			os.Exit(1)
+		} else {
+			cmd.Println("Nothing to deploy")
 		}
 	},
 }
