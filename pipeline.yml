@@ -1,0 +1,24 @@
+resource_types:
+- name: carousel
+  type: registry-image
+  source:
+    repository: starkandwayne/carousel-concourse
+
+resources:
+- name: carousel
+  type: carousel
+  check_every: 5m
+  source:
+    # Every resource created using ofcourse will have `log_level`
+    # as an available option in the source configuration. If not
+    # given, it defaults to `info`.
+    log_level: debug
+
+jobs:
+- name: do-it
+  plan:
+  - get: carousel
+    trigger: true
+  - put: carousel
+    params:
+      version_path: carousel/version
