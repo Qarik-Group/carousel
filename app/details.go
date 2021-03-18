@@ -206,6 +206,7 @@ func (a *Application) renderWelcome() tview.Primitive {
 	addSimpleRow(u, "Enter", "expand/collapse tree node")
 	addSimpleRow(u, "Tab", "cycle trough panels")
 	addSimpleRow(u, "Control", "modifier for actions ([yellow]^[white])")
+	addSimpleRow(u, "Control+c", "exit")
 
 	return u
 }
