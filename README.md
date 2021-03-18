@@ -27,7 +27,7 @@ export CREDHUB_CA_CERT="-----BEGIN CERTIFICATE-----
 When using [bosh-bootloader](https://github.com/cloudfoundry/bosh-bootloader) the above
 can be achieved by running `eval "$(bbl print-env)"` in your terminal.
 
-### Broswe
+### Browse
 
 To make it easier to debug credential, and in particular certificate issues, carousel
 provides an interactive terminal UI. Which gives the user an simpel way of browsing
@@ -85,23 +85,23 @@ resource_types:
 - name: carousel
   type: registry-image
   source:
-    repository: starkandwayne/carousel-concourse
+	repository: starkandwayne/carousel-concourse
 
 resources:
 - name: carousel
   type: carousel
   check_every: 5m
   source:
-    log_level: debug
+	log_level: debug
 
 jobs:
 - name: do-it
   plan:
   - get: carousel
-    trigger: true
+	trigger: true
   - put: carousel
-    params:
-      version_path: carousel/version
+	params:
+	  version_path: carousel/version
 ```
 
 ## Behavior
