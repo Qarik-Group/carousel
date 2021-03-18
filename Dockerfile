@@ -1,4 +1,4 @@
-FROM golang:1.12.7 as builder
+FROM golang:1.16 as builder
 
 COPY . /code
 
@@ -8,7 +8,7 @@ RUN unset GOPATH && \
     go test -v ./... && \
     go install ./...
 
-FROM golang:1.12.7
+FROM golang:1.16
 
 RUN mkdir -p /opt/resource
 
