@@ -1,0 +1,3 @@
+#!/bin/bash
+
+carousel concourse ci_in <&0

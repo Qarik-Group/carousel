@@ -1,0 +1,3 @@
+#!/bin/bash
+
+carousel concourse check <&0

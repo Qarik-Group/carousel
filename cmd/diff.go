@@ -53,7 +53,6 @@ var diffCmd = &cobra.Command{
 					cmd.Printf("Found credential(s) pending a bosh deploy:\n")
 				}
 				cmd.Printf("%s\n  + version: %s | %s\n", cred.Path.Name, cred.ID, cred.Summary())
-				latestDeployed = cred.LatestDeployedTo(filters.deployment)
 				if latestDeployed != nil {
 					cmd.Printf("  - version: %s | %s\n", latestDeployed.ID, latestDeployed.Summary())
 				}

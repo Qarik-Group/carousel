@@ -12,4 +12,6 @@ FROM golang:1.12.7
 
 RUN mkdir -p /opt/resource
 
-COPY --from=builder /root/go/bin/* /opt/resource/
+COPY --from=builder /root/go/bin/carousel /bin/
+  RUN mkdir -p /opt/resource
+  COPY ./concourse/* /opt/resource/
