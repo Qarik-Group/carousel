@@ -37,7 +37,7 @@ var doNotInspectCerts bool
 // statusCmd represents the status command
 var diffCmd = &cobra.Command{
 	Use:   "diff",
-	Short: "Show diff in what should be deployed",
+	Short: "Show diff off what should be deployed",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		initialize()
