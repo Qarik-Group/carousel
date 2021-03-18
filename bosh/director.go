@@ -10,6 +10,7 @@ import (
 
 type Director interface {
 	GetVariables() ([]*Variable, error)
+	GetManifest(deployment string) ([]byte, error)
 }
 
 func NewDirector(cfg *config.Bosh) (Director, error) {
@@ -23,6 +24,19 @@ func NewDirector(cfg *config.Bosh) (Director, error) {
 
 type director struct {
 	client boshdir.Director
+}
+
+func (d *director) GetManifest(name string) ([]byte, error) {
+	deployment, err := d.client.FindDeployment(name)
+	if err != nil {
+		return nil, err
+	}
+	out, err := deployment.Manifest()
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(out), nil
 }
 
 func buildDirector(cfg *config.Bosh) (boshdir.Director, error) {

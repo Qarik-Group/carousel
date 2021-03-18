@@ -72,19 +72,30 @@ func (c *Credential) LatestDeployedTo(deployment string) *Credential {
 	return nil
 }
 
+func (c *Credential) PrintCreatedAt() string {
+	return fmt.Sprintf("%s (%s)",
+		c.VersionCreatedAt.Format(time.RFC3339),
+		humanize.RelTime(*c.VersionCreatedAt, time.Now(), "ago", "from now"),
+	)
+}
+
+func (c *Credential) PrintExpiry() string {
+	if c.ExpiryDate == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s (%s)",
+		c.ExpiryDate.Format(time.RFC3339),
+		humanize.RelTime(*c.ExpiryDate, time.Now(), "ago", "from now"),
+	)
+}
+
 func (c *Credential) Summary() string {
 	switch c.Type {
 	case credhub.Certificate:
-		return fmt.Sprintf("type: %s | created at: %s (%s) | expiry: %s (%s)",
-			c.Type.String(),
-			c.VersionCreatedAt.Format(time.RFC3339),
-			humanize.RelTime(*c.VersionCreatedAt, time.Now(), "ago", "from now"),
-			c.ExpiryDate.Format(time.RFC3339),
-			humanize.RelTime(*c.ExpiryDate, time.Now(), "ago", "from now"))
+		return fmt.Sprintf("type: %s | created at: %s | expiry: %s",
+			c.Type.String(), c.PrintCreatedAt(), c.PrintExpiry())
 	default:
-		return fmt.Sprintf("type: %s | created at: %s (%s)",
-			c.Type.String(),
-			c.VersionCreatedAt.Format(time.RFC3339),
-			humanize.RelTime(*c.VersionCreatedAt, time.Now(), "ago", "from now"))
+		return fmt.Sprintf("type: %s | created at: %s",
+			c.Type.String(), c.PrintCreatedAt())
 	}
 }

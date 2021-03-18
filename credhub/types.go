@@ -44,7 +44,9 @@ type Credential struct {
 	RawValue             json.RawMessage `json:"value,omitempty"`
 
 	Ca                   []*x509.Certificate    `json:"_"`
+	PEMCa                string                 `json:"_"`
 	Certificate          *x509.Certificate      `json:"_"`
+	PEMCertificate       string                 `json:"_"`
 	PrivateKey           string                 `json:"_"`
 	PublicKey            string                 `json:"_"`
 	PublicKeyFingerprint string                 `json:"_"`
@@ -98,11 +100,13 @@ func (c *Credential) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		c.Ca = ca
+		c.PEMCa = v.Ca
 		cert, err := parseCertificate(v.Certificate)
 		if err != nil {
 			return err
 		}
 		c.Certificate = cert
+		c.PEMCertificate = v.Certificate
 		c.PrivateKey = v.PrivateKey
 
 	case SSH, RSA, User:
@@ -137,4 +141,24 @@ func parseCAs(raw string) ([]*x509.Certificate, error) {
 func parseCertificate(raw string) (*x509.Certificate, error) {
 	certBlock, _ := pem.Decode([]byte(raw))
 	return x509.ParseCertificate(certBlock.Bytes)
+}
+
+func (c *Credential) ToStaticVariable() interface{} {
+	switch c.Type {
+	case Password:
+		return c.Password
+	case Value, JSON:
+		return c.Value
+	default:
+		return map[interface{}]interface{}{
+			"ca":                     c.PEMCa,
+			"certificate":            c.PEMCertificate,
+			"private_key":            c.PrivateKey,
+			"public_key":             c.PublicKey,
+			"public_key_fingerprint": c.PublicKeyFingerprint,
+			"password":               c.Password,
+			"password_hash":          c.PasswordHash,
+			"username":               c.Username,
+		}
+	}
 }

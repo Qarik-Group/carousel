@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -13,8 +12,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/grantae/certinfo"
-
-	humanize "github.com/dustin/go-humanize"
 )
 
 func (a *Application) viewDetails() *tview.Flex {
@@ -103,9 +100,7 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 	t.SetTitle("Credhub & BOSH")
 
 	addSimpleRow(t, "ID", cred.ID)
-	addSimpleRow(t, "Created At", fmt.Sprintf("%s (%s)",
-		cred.VersionCreatedAt.Format(time.RFC3339),
-		humanize.RelTime(*cred.VersionCreatedAt, time.Now(), "ago", "from now")))
+	addSimpleRow(t, "Created At", cred.PrintCreatedAt())
 	addSimpleRow(t, "Deployments", renderDeployments(cred.Deployments))
 	addSimpleRow(t, "Latest", strconv.FormatBool(cred.Latest))
 
@@ -115,9 +110,7 @@ func (a *Application) renderCredentialDetail(cred *state.Credential) tview.Primi
 
 	switch cred.Type {
 	case credhub.Certificate:
-		addSimpleRow(t, "Expiry", fmt.Sprintf("%s (%s)",
-			cred.ExpiryDate.Format(time.RFC3339),
-			humanize.RelTime(*cred.ExpiryDate, time.Now(), "ago", "from now")))
+		addSimpleRow(t, "Expiry", cred.PrintExpiry())
 		addSimpleRow(t, "Transitional", strconv.FormatBool(cred.Transitional))
 		addSimpleRow(t, "Certificate Authority", strconv.FormatBool(cred.CertificateAuthority))
 		addSimpleRow(t, "Self Signed", strconv.FormatBool(cred.SelfSigned))

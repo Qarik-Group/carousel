@@ -15,13 +15,15 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/emirpasic/gods v1.12.0
 	github.com/gdamore/tcell/v2 v2.1.0
+	github.com/gonvenience/ytbx v1.3.1
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
+	github.com/homeport/dyff v1.2.3
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/karrick/tparse v2.4.2+incompatible
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.4
+	github.com/onsi/ginkgo v1.15.2
+	github.com/onsi/gomega v1.11.0
 	github.com/pivotal-cf/paraphernalia v0.0.0-20180203224945-a64ae2051c20 // indirect
 	github.com/rivo/tview v0.0.0-20201215042513-a8048787f0c8
 	github.com/spf13/cobra v1.1.3
@@ -31,4 +33,5 @@ require (
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect
 	github.com/vito/go-interact v1.0.0
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
