@@ -3,6 +3,7 @@ package resource
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 
 	cstate "github.com/starkandwayne/carousel/state"
@@ -14,13 +15,7 @@ type Resource struct{}
 // This is called when Concourse does its resource checks, or when the `fly check-resource` command is run.
 func (r *Resource) Check(source oc.Source, version oc.Version, env oc.Environment,
 	logger *oc.Logger) ([]oc.Version, error) {
-	// Returned `versions` should be all of the versions since the one given in the `version`
-	// argument. If `version` is nil, then return the first available version. In many cases there
-	// will be only one version to return, depending on the type of resource being implemented.
-	// For example, a git resource would return a list of commits since the one given in the
-	// `version` argument, whereas that would not make sense for resources which do not have any
-	// kind of linear versioning.
-	initializeFromSource(source)
+	initializeFromSource(source, logger)
 
 	deployment := source["deployment"].(string)
 	// filters.latest = true
@@ -28,9 +23,9 @@ func (r *Resource) Check(source oc.Source, version oc.Version, env oc.Environmen
 		logger.Errorf("deployment flag must be set")
 	}
 
-	logger.Infof("Refreshing state")
-	refresh()
-	logger.Infof(" done\n\n")
+	logger.Infof("Refreshing state for deployment '%s'", deployment)
+	refresh(logger)
+	logger.Infof("done\n")
 
 	credentials := state.Credentials(cstate.DeploymentFilter(deployment))
 	credentials.SortByNameAndCreatedAt()
@@ -45,8 +40,11 @@ func (r *Resource) Check(source oc.Source, version oc.Version, env oc.Environmen
 	}
 	versions := []oc.Version{}
 	if deployNeeded {
+		logger.Infof("Found credentials to re-deploy")
 		hash := sha256.Sum256([]byte(allVersions))
-		versions = append(versions, oc.Version{"hash": string(hash[:])})
+		versions = append(versions, oc.Version{"hash": hex.EncodeToString(hash[:])})
+	} else {
+		logger.Infof("Nothing to deploy")
 	}
 
 	return versions, nil
@@ -56,8 +54,9 @@ func (r *Resource) Check(source oc.Source, version oc.Version, env oc.Environmen
 // This is called when a Concourse job does `get` on the resource.
 func (r *Resource) In(outputDirectory string, source oc.Source, params oc.Params, version oc.Version,
 	env oc.Environment, logger *oc.Logger) (oc.Version, oc.Metadata, error) {
-	logger.Errorf("Unimplemented")
-	return nil, nil, nil
+	metadata := oc.Metadata{}
+
+	return version, metadata, nil
 }
 
 // Out implements the ofcourse.Resource Out method, corresponding to the /opt/resource/out command.

@@ -1,8 +1,6 @@
 package resource
 
 import (
-	"log"
-	"os"
 	"sync"
 
 	credhubcli "code.cloudfoundry.org/credhub-cli/credhub"
@@ -15,29 +13,25 @@ import (
 )
 
 var (
-	logger   *log.Logger
 	credhub  ccredhub.CredHub
 	director cbosh.Director
 	state    State
 )
 
-func initializeFromSource(source oc.Source) {
-	logger = log.New(os.Stderr, "", 0)
+func initializeFromSource(source oc.Source, logger *oc.Logger) {
 
-	bosh_cfg := source["bosh"].(map[string]string)
-	credhub_cfg := source["credhub"].(map[string]string)
 	cfg := config.Config{
 		Bosh: &config.Bosh{
-			Environment:  bosh_cfg["environment"],
-			Client:       bosh_cfg["client"],
-			ClientSecret: bosh_cfg["client_secret"],
-			CaCert:       bosh_cfg["ca_cert"],
+			Environment:  source["bosh_environment"].(string),
+			Client:       source["bosh_client"].(string),
+			ClientSecret: source["bosh_client_secret"].(string),
+			CaCert:       source["bosh_ca_cert"].(string),
 		},
 		Credhub: &config.Credhub{
-			Server: credhub_cfg["server"],
-			Client: credhub_cfg["client"],
-			Secret: credhub_cfg["secret"],
-			CaCert: credhub_cfg["ca_cert"],
+			Server: source["credhub_server"].(string),
+			Client: source["credhub_client"].(string),
+			Secret: source["credhub_secret"].(string),
+			CaCert: source["credhub_ca_cert"].(string),
 		},
 	}
 
@@ -47,20 +41,20 @@ func initializeFromSource(source oc.Source) {
 		credhubcli.Auth(auth.UaaClientCredentials(cfg.Credhub.Client, cfg.Credhub.Secret)),
 	)
 	if err != nil {
-		logger.Fatalf("failed to connect to Credhub: %s", err)
+		logger.Errorf("failed to connect to Credhub: %s", err)
 	}
 
 	credhub = ccredhub.NewCredHub(chcli)
 
 	director, err = cbosh.NewDirector(cfg.Bosh)
 	if err != nil {
-		logger.Fatalf("failed to connect to BOSH Director: %s", err)
+		logger.Errorf("failed to connect to BOSH Director: %s", err)
 	}
 
 	state = NewState()
 }
 
-func refresh() error {
+func refresh(logger *oc.Logger) error {
 	var (
 		wg          sync.WaitGroup
 		err         error
@@ -73,7 +67,7 @@ func refresh() error {
 		defer wg.Done()
 		*credentials, err = credhub.FindAll()
 		if err != nil {
-			logger.Fatalf("failed to load credentials from Credhub: %s", err)
+			logger.Errorf("failed to load credentials from Credhub: %s", err)
 		}
 
 	}(&wg, &credentials)
@@ -83,7 +77,7 @@ func refresh() error {
 		defer wg.Done()
 		*variables, err = director.GetVariables()
 		if err != nil {
-			logger.Fatalf("failed to load variables from BOSH Director: %s", err)
+			logger.Errorf("failed to load variables from BOSH Director: %s", err)
 		}
 
 	}(&wg, &variables)

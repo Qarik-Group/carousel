@@ -1,0 +1,29 @@
+resource_types:
+- name: carousel
+  type: registry-image
+  source:
+    repository: starkandwayne/carousel-concourse
+
+resources:
+- name: carousel
+  type: carousel
+  check_every: 5m
+  source:
+    deployment: carousel-demo
+    log_level: debug
+    bosh_environment: ((bosh_environment))
+    bosh_client: ((bosh_client))
+    bosh_client_secret: ((bosh_client_secret))
+    bosh_ca_cert: ((bosh_ca_cert))
+    credhub_server: ((credhub_server))
+    credhub_client: ((credhub_client))
+    credhub_secret: ((credhub_client_secret))
+    credhub_ca_cert: ((credhub_ca_cert))
+
+
+
+jobs:
+- name: do-it
+  plan:
+  - get: carousel
+    trigger: true
