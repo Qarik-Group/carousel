@@ -4,6 +4,7 @@ package resource
 import (
 	"crypto/sha256"
 	"encoding/hex"
+
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 
 	cstate "github.com/starkandwayne/carousel/state"
@@ -18,7 +19,6 @@ func (r *Resource) Check(source oc.Source, version oc.Version, env oc.Environmen
 	initializeFromSource(source, logger)
 
 	deployment := source["deployment"].(string)
-	// filters.latest = true
 	if deployment == "" {
 		logger.Errorf("deployment flag must be set")
 	}

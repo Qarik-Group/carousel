@@ -11,6 +11,10 @@ import (
 type Director interface {
 	GetVariables() ([]*Variable, error)
 	GetManifest(deployment string) ([]byte, error)
+	GetActiveCloudConfigs(deployment string) (map[string][]byte, error)
+	GetLatestCloudConfigs(deployment string) (map[string][]byte, error)
+	GetActiveRuntimeConfigs(deployment string) (map[string][]byte, error)
+	GetLatestRuntimeConfigs(deployment string) (map[string][]byte, error)
 }
 
 func NewDirector(cfg *config.Bosh) (Director, error) {

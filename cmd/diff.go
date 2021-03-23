@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 
@@ -60,16 +61,25 @@ var diffCmd = &cobra.Command{
 		if err != nil {
 			logger.Fatalf("failed to build latest yaml: %s", err)
 		}
+		latestNames := []string{"manifest"}
 
 		activeYAML, err := renderTemplate(manfest, active)
 		if err != nil {
 			logger.Fatalf("failed to build active yaml: %s", err)
 		}
+		activeNames := []string{"manifest"}
+
+		appendConfigs(director.GetLatestCloudConfigs, latest, &latestYAML, &latestNames)
+		appendConfigs(director.GetActiveCloudConfigs, active, &activeYAML, &activeNames)
+		appendConfigs(director.GetLatestRuntimeConfigs, latest, &latestYAML, &latestNames)
+		appendConfigs(director.GetActiveRuntimeConfigs, active, &activeYAML, &activeNames)
 
 		report, err := dyff.CompareInputFiles(ytbx.InputFile{
 			Documents: activeYAML,
+			Names:     activeNames,
 		}, ytbx.InputFile{
 			Documents: latestYAML,
+			Names:     latestNames,
 		})
 
 		if len(report.Diffs) == 0 {
@@ -131,4 +141,37 @@ func renderTemplate(manifest []byte, creds cstate.Credentials) ([]*yaml.Node, er
 	}
 
 	return ytbx.LoadYAMLDocuments(bytes)
+}
+
+func appendConfigs(fn func(deployment string) (map[string][]byte, error),
+	creds cstate.Credentials, appendTo *[]*yaml.Node, names *[]string) {
+	confs, err := fn(filters.deployment)
+	if err != nil {
+		logger.Fatalf("failed to get latest cloud configs: %s", err)
+	}
+
+	sortedNames := make([]string, 0)
+	for name, _ := range confs {
+		sortedNames = append(sortedNames, name)
+	}
+	sort.Strings(sortedNames)
+
+	sortedNamesMap := make(map[string]int, 0)
+	for i, name := range sortedNames {
+		sortedNamesMap[name] = i
+	}
+
+	confYAMLs := make([][]*yaml.Node, len(confs), len(confs))
+	for name, conf := range confs {
+		confYAML, err := renderTemplate(conf, creds)
+		if err != nil {
+			logger.Fatalf("failed to interpolate config variables into: %s, got: %s", name, err)
+		}
+		confYAMLs[sortedNamesMap[name]] = confYAML
+	}
+
+	for _, confYAML := range confYAMLs {
+		*appendTo = append(*appendTo, confYAML...)
+	}
+	*names = append(*names, sortedNames...)
 }

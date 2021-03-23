@@ -21,7 +21,6 @@ import (
 	"github.com/starkandwayne/carousel/resource"
 )
 
-// statusCmd represents the status command
 var concourseCmd = &cobra.Command{
 	Use:    "concourse",
 	Short:  "Subcommand to execute concourse resource operations",
