@@ -1,8 +1,31 @@
-resource_types:
-- name: carousel
-  type: registry-image
-  source:
-    repository: starkandwayne/carousel-concourse
+jobs:
+- name: deploy-changes
+  plan:
+  - get: carousel
+    trigger: true
+  - get: repo
+  - task: diff
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: starkandwayne/carousel-concourse
+      params:
+        BOSH_ENVIRONMENT: ((bosh_environment))
+        BOSH_CLIENT: ((bosh_client))
+        BOSH_CLIENT_SECRET: ((bosh_client_secret))
+        BOSH_CA_CERT: ((bosh_ca_cert))
+        CREDHUB_SERVER: ((credhub_url))
+        CREDHUB_CLIENT: ((credhub_username))
+        CREDHUB_SECRET: ((credhub_password))
+        CREDHUB_CA_CERT: ((credhub_ca_cert))
+      run:
+        path: /bin/sh
+        args: [-c, "carousel diff --deployment carousel-demo --show-credential-meta || true"]
+  - put: deploy
+    params:
+      manifest: repo/demo/manifest.yml
 
 resources:
 - name: carousel
@@ -15,15 +38,34 @@ resources:
     bosh_client: ((bosh_client))
     bosh_client_secret: ((bosh_client_secret))
     bosh_ca_cert: ((bosh_ca_cert))
-    credhub_server: ((credhub_server))
-    credhub_client: ((credhub_client))
-    credhub_secret: ((credhub_client_secret))
+    credhub_server: ((credhub_url))
+    credhub_client: ((credhub_username))
+    credhub_secret: ((credhub_password))
     credhub_ca_cert: ((credhub_ca_cert))
 
+- name: deploy
+  type: bosh-deployment
+  source:
+    deployment: carousel-demo
+    target: ((bosh_environment))
+    client: ((bosh_client))
+    client_id: ((bosh_client))
+    client_secret: ((bosh_client_secret))
+    ca_cert: ((bosh_ca_cert))
 
+- name: repo
+  type: git
+  source:
+    uri: https://github.com/starkandwayne/carousel.git
 
-jobs:
-- name: do-it
-  plan:
-  - get: carousel
-    trigger: true
+resource_types:
+- name: carousel
+  type: registry-image
+  source:
+    repository: starkandwayne/carousel-concourse
+
+- name: bosh-deployment
+  type: docker-image
+  source:
+    repository: cloudfoundry/bosh-deployment-resource
+    tag: latest
