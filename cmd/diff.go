@@ -34,6 +34,7 @@ import (
 )
 
 var doNotInspectCerts bool
+var showCredentialMeta bool
 
 // statusCmd represents the status command
 var diffCmd = &cobra.Command{
@@ -109,6 +110,8 @@ func init() {
 	addDeploymentFlag(diffCmd.Flags())
 	diffCmd.Flags().BoolVar(&doNotInspectCerts, "do-not-inspect-certs", false,
 		"don't show a human readable diff for certificates")
+	diffCmd.Flags().BoolVar(&showCredentialMeta, "show-credential-meta", false,
+		"show credential meta data instead of the actual values")
 }
 
 type cred struct {
@@ -124,9 +127,16 @@ func renderTemplate(manifest []byte, creds cstate.Credentials) ([]*yaml.Node, er
 	tpl := boshtpl.NewTemplate(manifest)
 	staticVars := boshtpl.StaticVariables{}
 
-	for _, cred := range creds {
-		staticVars[cred.Name] = cred.Credential.ToStaticVariable()
-		staticVars[path.Base(cred.Name)] = cred.Credential.ToStaticVariable()
+	if showCredentialMeta {
+		for _, cred := range creds {
+			staticVars[cred.Name] = cred.Credential.ToStaticVariableMetaOnly()
+			staticVars[path.Base(cred.Name)] = cred.Credential.ToStaticVariableMetaOnly()
+		}
+	} else {
+		for _, cred := range creds {
+			staticVars[cred.Name] = cred.Credential.ToStaticVariable()
+			staticVars[path.Base(cred.Name)] = cred.Credential.ToStaticVariable()
+		}
 	}
 
 	evalOpts := boshtpl.EvaluateOpts{

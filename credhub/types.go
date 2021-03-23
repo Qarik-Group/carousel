@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"time"
 )
 
@@ -160,5 +161,41 @@ func (c *Credential) ToStaticVariable() interface{} {
 			"password_hash":          c.PasswordHash,
 			"username":               c.Username,
 		}
+	}
+}
+
+func (c *Credential) summary() string {
+	return fmt.Sprintf("name: %s\nversion: %s\ncreated_at: %s",
+		c.Name, c.ID, c.VersionCreatedAt.Format(time.RFC3339))
+}
+
+func (c *Credential) ToStaticVariableMetaOnly() interface{} {
+	switch c.Type {
+	case Certificate:
+		return map[interface{}]interface{}{
+			"ca":          c.summary(),
+			"certificate": c.summary(),
+			"private_key": c.summary(),
+		}
+	case SSH:
+		return map[interface{}]interface{}{
+			"private_key":            c.summary(),
+			"public_key":             c.summary(),
+			"public_key_fingerprint": c.summary(),
+		}
+	case RSA:
+		return map[interface{}]interface{}{
+			"private_key":            c.summary(),
+			"public_key":             c.summary(),
+			"public_key_fingerprint": c.summary(),
+		}
+	case User:
+		return map[interface{}]interface{}{
+			"password":      c.summary(),
+			"password_hash": c.summary(),
+			"username":      c.summary(),
+		}
+	default:
+		return c.summary()
 	}
 }
