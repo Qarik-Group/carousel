@@ -6,12 +6,11 @@ WORKDIR /code
 
 RUN unset GOPATH && \
     go test -v ./... && \
-    go install ./...
+    CGO_ENABLED=0 go install ./...
 
-FROM golang:1.16
-
-RUN mkdir -p /opt/resource
+FROM alpine
 
 COPY --from=builder /root/go/bin/carousel /bin/
-  RUN mkdir -p /opt/resource
-  COPY ./concourse/* /opt/resource/
+
+RUN mkdir -p /opt/resource
+COPY ./concourse/* /opt/resource/
