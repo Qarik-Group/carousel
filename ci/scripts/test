@@ -10,4 +10,4 @@ cd ${GOPATH}/src/${MODULE}
 # any `go test` / `go vet` stuff...
 
 go version; echo; echo
-make test
+make test-ci

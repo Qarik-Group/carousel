@@ -9,6 +9,9 @@ run:
 
 test:
 	ginkgo watch ./...
+	
+test-ci:
+	ginkgo  ./...
 
 gen:
 	go generate ./...
