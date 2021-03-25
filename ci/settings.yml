@@ -1,0 +1,30 @@
+---
+meta:
+  name:    carousel
+  release: Carousel
+  target:  pipes
+  url:     https://pipes.starkandwayne.com
+
+  initial_version: 0.0.1
+
+  go:
+    force_static_binary: true
+
+  git:
+    email: ci@starkandwayne.com
+    name:  CI Bot
+
+  aws:
+    access_key: ((cfcommunity.access))
+    secret_key: ((cfcommunity.secret))
+
+  github:
+    owner:  starkandwayne
+    repo:   carousel
+    branch: main
+    private_key:  ((github.private-key))
+    access_token: ((github.access-token))
+
+  slack:
+    webhook: ((slack.webhook))
+    channel: '#carousel'
