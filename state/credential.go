@@ -56,6 +56,10 @@ func (c *Credential) Active() bool {
 		return true
 	}
 	for _, cred := range c.ReferencedBy {
+		if cred == c {
+			// Handle circular references
+			continue
+		}
 		if cred.Active() {
 			return true
 		}
