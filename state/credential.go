@@ -52,15 +52,20 @@ func (c *Credential) PendingDeploys() Deployments {
 }
 
 func (c *Credential) Active() bool {
+	var emptyList Credentials = make(Credentials, 0)
+	return c.ActiveAndNotSeenBefore(emptyList)
+}
+
+func (c *Credential) ActiveAndNotSeenBefore(credsSeen Credentials) bool {
 	if len(c.Deployments) != 0 {
 		return true
 	}
+	if credsSeen.Includes(c) {
+		return false
+	}
+	seen := append(credsSeen, c)
 	for _, cred := range c.ReferencedBy {
-		if cred == c {
-			// Handle circular references
-			continue
-		}
-		if cred.Active() {
+		if cred.ActiveAndNotSeenBefore(seen) {
 			return true
 		}
 	}
