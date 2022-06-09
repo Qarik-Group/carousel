@@ -2,6 +2,16 @@
 
 A BOSH aware cli tool for managing the rotation of credentials stored in CredHub.
 
+## Installation
+
+As with all go applications you can create the binary by:
+
+* `git clone https://github.com/starkandwayne/carousel`
+* `cd carousel`
+* `go build`
+
+you may then run it using `./carousel -help` or move it under your path i.e. `cp carousel /usr/local/bin`
+
 ## Usage
 
 To be able to talk to BOSH and CredHub the following environment variables need to set:
@@ -26,6 +36,8 @@ export CREDHUB_CA_CERT="-----BEGIN CERTIFICATE-----
 
 When using [bosh-bootloader](https://github.com/cloudfoundry/bosh-bootloader) the above
 can be achieved by running `eval "$(bbl print-env)"` in your terminal.
+
+When using [BOSH Genesis Kit](https://github.com/genesis-community/bosh-genesis-kit) the same can be achieved by running `eval "$(genesis do environment-name-file.yml -- print-env)"`
 
 ### Browse
 
