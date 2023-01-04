@@ -124,7 +124,7 @@ func (f credentialFilters) Filters() []Filter {
 
 func addTypesFlag(set *pflag.FlagSet) {
 	set.StringSliceVarP(&filters.types, "types", "t", ccredhub.CredentialTypeStringValues(),
-		"filter by credential type (comma sperated)")
+		"filter by credential type (comma separated)")
 }
 
 func addDeploymentFlag(set *pflag.FlagSet) {

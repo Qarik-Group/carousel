@@ -131,4 +131,5 @@ func init() {
 	addIgnoreUpdateModeCireteriaFlag(rotateCmd.Flags())
 	addNameFlag(rotateCmd.Flags())
 	addDeploymentFlag(rotateCmd.Flags())
+	addTypesFlag(rotateCmd.Flags())
 }

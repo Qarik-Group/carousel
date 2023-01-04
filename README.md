@@ -59,7 +59,7 @@ List CredHub credentials augmented with information from the BOSH director:
 carousel list [flags]
 
 Flags:
-  -d, --deployments strings   filter by deployment names (comma sperated)
+  -d, --deployments strings   filter by deployment names (comma separated)
   -h, --help                  help for list
 	  --include-all           also show unused credential versions
 	  --signing               only show Certificates used to sign
